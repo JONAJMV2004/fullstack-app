@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | Programa de Lealtad</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="dashboard-body">
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="navbar-brand">
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="40" height="40" rx="10" fill="#6366f1"/>
+        <path d="M12 20a8 8 0 1 1 16 0 8 8 0 0 1-16 0zm8-5v5l3.5 3.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>Programa de Lealtad</span>
+    </div>
+    <div class="navbar-right">
+      <span id="nav-greeting" class="nav-greeting">Hola, ...</span>
+      <button class="btn btn-outline btn-sm" id="logout-btn">Cerrar Sesión</button>
+    </div>
+  </header>
+
+  <main class="dashboard-main">
+    <div id="alert" class="alert hidden" role="alert"></div>
+
+    <!-- ── Perfil ── -->
+    <section class="dash-section">
+      <div class="section-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <h2>Mi Perfil</h2>
+      </div>
+      <div class="profile-card">
+        <div class="profile-avatar-wrap">
+          <img id="profile-avatar" class="profile-avatar" src="" alt="Avatar" />
+          <div id="avatar-fallback" class="avatar-fallback hidden"></div>
+        </div>
+        <div class="profile-info">
+          <h1 id="profile-name" class="profile-name">Cargando…</h1>
+          <p id="profile-email" class="profile-email"></p>
+          <span id="profile-provider" class="badge"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Puntos ── -->
+    <section class="dash-section">
+      <div class="section-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <h2>Mis Puntos</h2>
+      </div>
+      <div class="points-banner">
+        <div class="points-total">
+          <span id="puntos-total" class="points-number">—</span>
+          <span class="points-label">puntos acumulados</span>
+        </div>
+        <div class="points-meta">
+          <div class="points-meta-item">
+            <span class="meta-label">Estancias</span>
+            <span id="total-estancias" class="meta-value">—</span>
+          </div>
+          <div class="points-meta-item">
+            <span class="meta-label">Canjes</span>
+            <span id="total-canjes" class="meta-value">—</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Crear Estancia ── -->
+    <section class="dash-section">
+      <div class="section-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <h2>Registrar Estancia</h2>
+      </div>
+      <form id="estancia-form" class="dash-form" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="check-in">Check-in</label>
+            <input type="datetime-local" id="check-in" required />
+          </div>
+          <div class="form-group">
+            <label for="check-out">Check-out</label>
+            <input type="datetime-local" id="check-out" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="puntos-ganados">Puntos Ganados</label>
+          <input type="number" id="puntos-ganados" placeholder="Ej. 150" min="1" required />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-auto" id="estancia-btn">
+            <span class="btn-text">Registrar</span>
+            <span class="spinner hidden"></span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Historial de Ingresos ── -->
+    <section class="dash-section">
+      <div class="section-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M3 9h18v4H3z"/><path d="M3 15h18v4H3z"/></svg>
+        <h2>Historial de Estancias</h2>
+      </div>
+      <div id="estancias-list" class="list-container">
+        <div class="list-empty">Cargando estancias…</div>
+      </div>
+    </section>
+
+    <!-- ── Editar Perfil ── -->
+    <section class="dash-section">
+      <div class="section-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <h2>Editar Perfil</h2>
+      </div>
+      <form id="edit-form" class="dash-form" novalidate>
+        <div class="form-group">
+          <label for="edit-name">Nombre Completo</label>
+          <input type="text" id="edit-name" name="name" placeholder="Tu nombre" required />
+        </div>
+        <div class="form-group">
+          <label for="edit-password">Nueva Contraseña <span class="hint">(dejar en blanco para no cambiar)</span></label>
+          <div class="password-wrapper">
+            <input type="password" id="edit-password" name="password" placeholder="••••••••" autocomplete="new-password" minlength="6" />
+            <button type="button" class="toggle-pw" aria-label="Mostrar contraseña">
+              <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-auto" id="save-btn">
+            <span class="btn-text">Guardar Cambios</span>
+            <span class="spinner hidden"></span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Zona de Peligro ── -->
+    <section class="dash-section danger-section">
+      <div class="section-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <h2 class="danger-title">Zona de Peligro</h2>
+      </div>
+      <p class="danger-desc">Eliminar tu cuenta es permanente y no se puede deshacer.</p>
+      <button class="btn btn-danger" id="delete-btn">Eliminar mi Cuenta</button>
+    </section>
+  </main>
+
+  <!-- Modal confirmar eliminación -->
+  <div id="delete-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>¿Estás seguro?</h3>
+      <p>Esto eliminará permanentemente tu cuenta y todos tus datos.</p>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancel-delete-btn">Cancelar</button>
+        <button class="btn btn-danger" id="confirm-delete-btn">
+          <span class="btn-text">Sí, Eliminar</span>
+          <span class="spinner hidden"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

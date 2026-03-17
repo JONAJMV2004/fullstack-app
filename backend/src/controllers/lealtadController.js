@@ -1,0 +1,196 @@
+const crypto = require('crypto');
+const EstanciaModel = require('../models/estanciaModel');
+const PuntosModel = require('../models/puntosModel');
+const PremioModel = require('../models/premioModel');
+const CanjeModel = require('../models/canjeModel');
+
+// ── ESTANCIAS ────────────────────────────────────────────────────────────────
+
+// POST /api/lealtad/estancias
+exports.registrarEstancia = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const { fecha_check_in, fecha_check_out, puntos_ganados } = req.body;
+
+    if (!fecha_check_in || !fecha_check_out || !puntos_ganados)
+      return res.status(400).json({ error: 'check_in, check_out y puntos_ganados son requeridos.' });
+
+    if (puntos_ganados < 1)
+      return res.status(400).json({ error: 'Los puntos ganados deben ser mayor a 0.' });
+
+    if (new Date(fecha_check_out) <= new Date(fecha_check_in))
+      return res.status(400).json({ error: 'La fecha de check-out debe ser posterior al check-in.' });
+
+    const estancia = await EstanciaModel.create({
+      usuarioId,
+      fechaCheckIn: fecha_check_in,
+      fechaCheckOut: fecha_check_out,
+      puntosGanados: puntos_ganados,
+      estado: 'confirmada',
+    });
+
+    // Generar movimiento de puntos automáticamente
+    const checkIn = new Date(fecha_check_in).toLocaleDateString('es-MX');
+    const checkOut = new Date(fecha_check_out).toLocaleDateString('es-MX');
+    await PuntosModel.addEntry({
+      usuarioId,
+      descripcion: `Estancia ${checkIn} – ${checkOut}`,
+      puntos: puntos_ganados,
+    });
+
+    return res.status(201).json({ message: 'Estancia registrada.', estancia });
+  } catch (err) {
+    console.error('registrarEstancia error:', err);
+    return res.status(500).json({ error: 'Error al registrar estancia.' });
+  }
+};
+
+// GET /api/lealtad/estancias
+exports.getEstancias = async (req, res) => {
+  try {
+    const estancias = await EstanciaModel.getByUsuario(req.user.id);
+    return res.status(200).json({ estancias });
+  } catch (err) {
+    console.error('getEstancias error:', err);
+    return res.status(500).json({ error: 'Error al obtener estancias.' });
+  }
+};
+
+// ── PUNTOS ───────────────────────────────────────────────────────────────────
+
+// GET /api/lealtad/puntos
+exports.getPuntos = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const [balance, historial, totalCanjes] = await Promise.all([
+      PuntosModel.getBalance(usuarioId),
+      PuntosModel.getHistory(usuarioId),
+      CanjeModel.countByUsuario(usuarioId),
+    ]);
+    const totalEstancias = await EstanciaModel.getByUsuario(usuarioId);
+
+    return res.status(200).json({
+      balance,
+      historial,
+      resumen: {
+        total_estancias: totalEstancias.length,
+        total_canjes: totalCanjes,
+      },
+    });
+  } catch (err) {
+    console.error('getPuntos error:', err);
+    return res.status(500).json({ error: 'Error al obtener puntos.' });
+  }
+};
+
+// ── PREMIOS ──────────────────────────────────────────────────────────────────
+
+// GET /api/lealtad/premios
+exports.getPremios = async (req, res) => {
+  try {
+    const premios = await PremioModel.getAll();
+    return res.status(200).json({ premios });
+  } catch (err) {
+    console.error('getPremios error:', err);
+    return res.status(500).json({ error: 'Error al obtener premios.' });
+  }
+};
+
+// ── CANJES ───────────────────────────────────────────────────────────────────
+
+// POST /api/lealtad/canjes
+exports.canjearPremio = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const { premio_id } = req.body;
+
+    if (!premio_id)
+      return res.status(400).json({ error: 'premio_id es requerido.' });
+
+    const premio = await PremioModel.getById(premio_id);
+    if (!premio)
+      return res.status(404).json({ error: 'Premio no encontrado.' });
+
+    if (premio.disponibilidad <= 0)
+      return res.status(409).json({ error: 'Premio sin disponibilidad.' });
+
+    const balance = await PuntosModel.getBalance(usuarioId);
+    if (balance < premio.puntos_necesarios)
+      return res.status(422).json({
+        error: `Puntos insuficientes. Necesitas ${premio.puntos_necesarios}, tienes ${balance}.`,
+      });
+
+    // Generar código único
+    const codigoUnico = crypto.randomBytes(6).toString('hex').toUpperCase();
+
+    // Registrar canje, descontar puntos y decrementar disponibilidad
+    const [canje] = await Promise.all([
+      CanjeModel.create({ usuarioId, premioId: premio_id, puntosUtilizados: premio.puntos_necesarios, codigoUnico }),
+      PuntosModel.addEntry({
+        usuarioId,
+        descripcion: `Canje: ${premio.nombre}`,
+        puntos: -premio.puntos_necesarios,
+      }),
+      PremioModel.decrementDisponibilidad(premio_id),
+    ]);
+
+    return res.status(201).json({
+      message: 'Canje realizado con éxito.',
+      canje,
+      codigo: codigoUnico,
+    });
+  } catch (err) {
+    console.error('canjearPremio error:', err);
+    return res.status(500).json({ error: 'Error al realizar canje.' });
+  }
+};
+
+// GET /api/lealtad/canjes
+exports.getCanjes = async (req, res) => {
+  try {
+    const canjes = await CanjeModel.getByUsuario(req.user.id);
+    return res.status(200).json({ canjes });
+  } catch (err) {
+    console.error('getCanjes error:', err);
+    return res.status(500).json({ error: 'Error al obtener canjes.' });
+  }
+};
+
+// POST /api/lealtad/canjes/validar
+exports.validarCodigo = async (req, res) => {
+  try {
+    const { codigo } = req.body;
+
+    if (!codigo)
+      return res.status(400).json({ error: 'El código es requerido.' });
+
+    const canje = await CanjeModel.getByCodigoUnico(codigo.toUpperCase());
+    if (!canje)
+      return res.status(404).json({ error: 'Código no encontrado.' });
+
+    if (canje.estado === 'aprobado')
+      return res.status(409).json({ error: 'Este código ya fue utilizado.' });
+
+    if (canje.estado === 'rechazado')
+      return res.status(409).json({ error: 'Este código fue rechazado.' });
+
+    // Verificar expiración (30 días desde la fecha del canje)
+    const expiracion = new Date(canje.fecha);
+    expiracion.setDate(expiracion.getDate() + 30);
+    if (new Date() > expiracion)
+      return res.status(410).json({ error: 'Este código ha expirado.' });
+
+    // Marcar como aprobado
+    const canjeActualizado = await CanjeModel.updateEstado(canje.id, 'aprobado');
+
+    return res.status(200).json({
+      message: 'Código válido. Canje aprobado.',
+      canje: canjeActualizado,
+      usuario: canje.usuarios,
+      premio: canje.premios,
+    });
+  } catch (err) {
+    console.error('validarCodigo error:', err);
+    return res.status(500).json({ error: 'Error al validar código.' });
+  }
+};

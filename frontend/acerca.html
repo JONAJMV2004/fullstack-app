@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acerca de | Cielito Home</title>
+  <link rel="stylesheet" href="css/cielito.css" />
+</head>
+<body class="app-body">
+  <div class="app-page">
+    <header class="app-topbar">
+      <div></div>
+      <button class="menu-btn" id="menu-open-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="app-logo-circle">
+      <svg viewBox="0 0 100 100" fill="none" width="48" height="48">
+        <path d="M50 22 L70 38 L70 68 L30 68 L30 38 Z" stroke="#2D6A50" stroke-width="2.5" fill="none"/>
+        <path d="M42 68 L42 52 L58 52 L58 68" stroke="#2D6A50" stroke-width="2.5" fill="none"/>
+        <circle cx="50" cy="34" r="5" stroke="#2D6A50" stroke-width="2.5" fill="none"/>
+        <path d="M24 40 L50 22 L76 40" stroke="#2D6A50" stroke-width="2.5" fill="none"/>
+      </svg>
+      <span>Cielito Home</span>
+    </div>
+
+    <div class="inner-page-content">
+      <h1 class="inner-page-title">Acerca de</h1>
+
+      <div class="inner-section">
+        <h2 class="inner-section-title">Cielito Home</h2>
+        <p class="inner-section-text">Somos una empresa dedicada a brindarte experiencias únicas a la carta. Nuestro programa de lealtad te permite acumular puntos con cada estancia y canjearlos por increíbles beneficios.</p>
+      </div>
+
+      <div class="inner-section">
+        <h2 class="inner-section-title">Nuestra misión</h2>
+        <p class="inner-section-text">Hacer que cada estadía sea una experiencia memorable, recompensando tu preferencia con puntos que se convierten en beneficios reales para ti.</p>
+      </div>
+
+      <div class="inner-section">
+        <h2 class="inner-section-title">Versión</h2>
+        <p class="inner-section-text">Aplicación v1.0.0</p>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="home.html" class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Inicio</span>
+    </a>
+    <a href="recompensas.html" class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      <span>Recompensas</span>
+    </a>
+    <a href="tarjeta.html" class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span>Tarjeta</span>
+    </a>
+  </nav>
+
+  <script src="js/auth.js"></script>
+  <script>Auth.requireAuth();</script>
+  <script src="js/menu.js"></script>
+</body>
+</html>
