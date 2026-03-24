@@ -46,7 +46,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
     Auth.saveSession(data.token, data.user);
     showAlert('Bienvenido de vuelta.', 'success');
-    setTimeout(() => { window.location.href = 'home.html'; }, 800);
+    const destino = data.user.tipo_usuario === 'admin' ? 'admin-reportes.html' : 'home.html';
+    setTimeout(() => { window.location.href = destino; }, 800);
   } catch {
     showAlert('Error de conexión. Verifica que el servidor esté activo.');
   } finally {

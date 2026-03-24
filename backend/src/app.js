@@ -1,9 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
+const authRoutes   = require('./routes/auth');
+const userRoutes   = require('./routes/users');
 const lealtadRoutes = require('./routes/lealtad');
+const adminRoutes  = require('./routes/admin');
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.post('/api/test-insert', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/lealtad', lealtadRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 

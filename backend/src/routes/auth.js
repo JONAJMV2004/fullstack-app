@@ -14,7 +14,8 @@ router.get('/oauth/facebook', authController.facebookOAuthUrl);
 // OAuth — exchange Supabase session tokens for app JWT
 router.post('/oauth/callback', authController.oauthCallback);
 
-// Protected: get current user profile
-router.get('/me', verifyToken, authController.getMe);
+// Protected: get / delete current user
+router.get('/me',    verifyToken, authController.getMe);
+router.delete('/me', verifyToken, authController.deleteMe);
 
 module.exports = router;
