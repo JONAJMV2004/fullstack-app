@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/register -H \"Content-Type: application/json\" -d '{\"\"nombre\"\":\"\"Test Admin\"\",\"\"email\"\":\"\"admin_test@cielito.com\"\",\"\"password\"\":\"\"test123\"\"}')"
+    ]
+  }
+}
