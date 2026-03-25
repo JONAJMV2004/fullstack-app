@@ -1,0 +1,119 @@
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
+import { useAuth, API_BASE } from '../context/AuthContext'
+import AppTopbar, { AppLogoCircle } from '../components/AppTopbar'
+import BottomNav from '../components/BottomNav'
+
+function pad(num, size) {
+  return String(num).padStart(size, '0')
+}
+
+function formatCardNumber(num) {
+  return num.replace(/(.{4})/g, '$1 ').trim()
+}
+
+function getNivel(balance) {
+  if (balance >= 5000) return { nombre: 'Oro', color: '#D4A017', icon: '★★★' }
+  if (balance >= 1000) return { nombre: 'Plata', color: '#94A3B8', icon: '★★' }
+  return { nombre: 'Bronce', color: '#CD7F32', icon: '★' }
+}
+
+export default function HomePage() {
+  const { authHeaders } = useAuth()
+  const [userData, setUserData] = useState(null)
+  const [balance, setBalance] = useState(0)
+
+  useEffect(() => {
+    async function cargarHome() {
+      try {
+        const [meRes, puntosRes] = await Promise.all([
+          fetch(`${API_BASE}/auth/me`, { headers: authHeaders() }),
+          fetch(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
+        ])
+        const meData = await meRes.json()
+        const puntosData = await puntosRes.json()
+        setUserData(meData.user)
+        setBalance(puntosData.balance || 0)
+      } catch (err) {
+        console.error('Error cargando home:', err)
+      }
+    }
+    cargarHome()
+  }, [])
+
+  const membresia = userData ? pad(userData.id, 4) : '—'
+  const numTarjeta = userData ? pad(userData.id, 8) : '—'
+  const nombre = userData?.nombre || userData?.name || '—'
+  const initials = nombre !== '—' ? nombre.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?'
+  const nivel = getNivel(balance)
+  const nextNivel = balance < 1000 ? { nombre: 'Plata', meta: 1000 } : balance < 5000 ? { nombre: 'Oro', meta: 5000 } : null
+  const progreso = nextNivel ? Math.min((balance / nextNivel.meta) * 100, 100) : 100
+
+  return (
+    <div className="app-body">
+      <div className="app-page home-page">
+        <AppTopbar />
+        <AppLogoCircle />
+
+        <h1 className="app-section-title">Mi Tarjeta</h1>
+
+        {/* ── Tarjeta principal ── */}
+        <div className="tc-card">
+          <div className="tc-card-pattern" />
+          <div className="tc-card-header">
+            <div className="tc-brand">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
+              <span>Cielito Home</span>
+            </div>
+            <div className="tc-nivel" style={{ background: nivel.color }}>
+              <span>{nivel.icon}</span> {nivel.nombre}
+            </div>
+          </div>
+
+          <div className="tc-chip">
+            <svg width="28" height="20" viewBox="0 0 28 20" fill="none"><rect x="1" y="1" width="26" height="18" rx="3" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/><line x1="10" y1="1" x2="10" y2="19" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/><line x1="18" y1="1" x2="18" y2="19" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/><line x1="1" y1="7" x2="27" y2="7" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/><line x1="1" y1="13" x2="27" y2="13" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/></svg>
+          </div>
+
+          <p className="tc-number">{formatCardNumber(numTarjeta)}</p>
+
+          <div className="tc-card-footer">
+            <div>
+              <p className="tc-footer-label">Titular</p>
+              <p className="tc-footer-value">{nombre.toUpperCase()}</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p className="tc-footer-label">Membresía</p>
+              <p className="tc-footer-value">{membresia}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Puntos ── */}
+        <div className="tc-balance-card">
+          <div className="tc-balance-top">
+            <div className="tc-balance-avatar">{initials}</div>
+            <div className="tc-balance-info">
+              <p className="tc-balance-label">Puntos disponibles</p>
+              <p className="tc-balance-amount">{balance.toLocaleString()}</p>
+            </div>
+          </div>
+          {nextNivel && (
+            <div className="tc-progress-section">
+              <div className="tc-progress-header">
+                <span className="tc-progress-text">Progreso a nivel {nextNivel.nombre}</span>
+                <span className="tc-progress-text">{balance} / {nextNivel.meta.toLocaleString()}</span>
+              </div>
+              <div className="tc-progress-bar">
+                <div className="tc-progress-fill" style={{ width: `${progreso}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Link to="/recompensas" className="btn-ch-primary home-canjear-btn">Canjear Puntos</Link>
+      </div>
+      <BottomNav />
+    </div>
+  )
+}

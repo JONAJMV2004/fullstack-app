@@ -23,6 +23,16 @@ const UsuarioModel = {
     return data;
   },
 
+  async findAuthById(id) {
+    const { data, error } = await supabaseAdmin
+      .from(TABLE)
+      .select('id, email, password_hash, provider')
+      .eq('id', id)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  },
+
   async create({ nombre, email, passwordHash, tipoUsuario = 'cliente' }) {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
