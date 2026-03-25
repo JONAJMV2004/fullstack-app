@@ -8,20 +8,13 @@ export default function DashboardPage() {
   const [puntosTotal, setPuntosTotal] = useState('—')
   const [totalEstancias, setTotalEstancias] = useState('—')
   const [totalCanjes, setTotalCanjes] = useState('—')
-  const [estancias, setEstancias] = useState([])
   const [editName, setEditName] = useState('')
   const [editPassword, setEditPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
-  // Form state
-  const [checkIn, setCheckIn] = useState('')
-  const [checkOut, setCheckOut] = useState('')
-  const [puntosGanados, setPuntosGanados] = useState('')
-
   // Loading states
   const [saveLoading, setSaveLoading] = useState(false)
-  const [estanciaLoading, setEstanciaLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
   function showAlert(message, type = 'error') {
@@ -31,7 +24,6 @@ export default function DashboardPage() {
   useEffect(() => {
     loadProfile()
     loadPuntos()
-    loadEstancias()
   }, [])
 
   async function loadProfile() {
@@ -56,14 +48,6 @@ export default function DashboardPage() {
         setTotalEstancias(data.totalEstancias || 0)
         setTotalCanjes(data.totalCanjes || 0)
       }
-    } catch { /* silent */ }
-  }
-
-  async function loadEstancias() {
-    try {
-      const res = await fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() })
-      const data = await res.json()
-      if (res.ok) setEstancias(data.estancias || [])
     } catch { /* silent */ }
   }
 
@@ -95,28 +79,6 @@ export default function DashboardPage() {
       showAlert('Network error. Please try again.')
     } finally {
       setSaveLoading(false)
-    }
-  }
-
-  async function handleEstanciaSubmit(e) {
-    e.preventDefault()
-    setAlert(null)
-    setEstanciaLoading(true)
-    try {
-      const res = await fetch(`${API_BASE}/lealtad/estancias`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ check_in: checkIn, check_out: checkOut, puntos_ganados: parseInt(puntosGanados) }),
-      })
-      const data = await res.json()
-      if (!res.ok) { showAlert(data.error || 'Error al registrar estancia.'); return }
-      showAlert('Estancia registrada exitosamente.', 'success')
-      setCheckIn(''); setCheckOut(''); setPuntosGanados('')
-      loadPuntos(); loadEstancias()
-    } catch {
-      showAlert('Error de conexión.')
-    } finally {
-      setEstanciaLoading(false)
     }
   }
 
@@ -199,61 +161,6 @@ export default function DashboardPage() {
                 <span className="meta-value">{totalCanjes}</span>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Registrar Estancia */}
-        <section className="dash-section">
-          <div className="section-header">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-            <h2>Registrar Estancia</h2>
-          </div>
-          <form className="dash-form" onSubmit={handleEstanciaSubmit} noValidate>
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="check-in">Check-in</label>
-                <input type="datetime-local" id="check-in" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label htmlFor="check-out">Check-out</label>
-                <input type="datetime-local" id="check-out" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} required />
-              </div>
-            </div>
-            <div className="form-group">
-              <label htmlFor="puntos-ganados">Puntos Ganados</label>
-              <input type="number" id="puntos-ganados" placeholder="Ej. 150" min="1" value={puntosGanados} onChange={(e) => setPuntosGanados(e.target.value)} required />
-            </div>
-            <div className="form-actions">
-              <button type="submit" className="btn btn-primary btn-auto" disabled={estanciaLoading}>
-                {estanciaLoading ? <span className="spinner" /> : <span className="btn-text">Registrar</span>}
-              </button>
-            </div>
-          </form>
-        </section>
-
-        {/* Historial */}
-        <section className="dash-section">
-          <div className="section-header">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v4H3z" /><path d="M3 9h18v4H3z" /><path d="M3 15h18v4H3z" /></svg>
-            <h2>Historial de Estancias</h2>
-          </div>
-          <div className="list-container">
-            {estancias.length === 0 ? (
-              <div className="list-empty">No hay estancias registradas.</div>
-            ) : (
-              estancias.map((est, i) => (
-                <div key={i} className="list-item">
-                  <div className="list-item-left">
-                    <span className="list-item-title">Estancia #{i + 1}</span>
-                    <span className="list-item-sub">{new Date(est.check_in).toLocaleDateString()} - {new Date(est.check_out).toLocaleDateString()}</span>
-                  </div>
-                  <div className="list-item-right">
-                    <span className={`badge-status badge-${est.estado || 'confirmada'}`}>{est.estado || 'confirmada'}</span>
-                    <span>+{est.puntos_ganados} pts</span>
-                  </div>
-                </div>
-              ))
-            )}
           </div>
         </section>
 

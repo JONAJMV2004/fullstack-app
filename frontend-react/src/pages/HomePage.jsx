@@ -24,23 +24,64 @@ export default function HomePage() {
   const [userData, setUserData] = useState(null)
   const [balance, setBalance] = useState(0)
 
+  // Estancia form
+  const [showEstancia, setShowEstancia] = useState(false)
+  const [checkIn, setCheckIn] = useState('')
+  const [checkOut, setCheckOut] = useState('')
+  const [estanciaLoading, setEstanciaLoading] = useState(false)
+  const [estancias, setEstancias] = useState([])
+  const [alert, setAlert] = useState(null)
+
   useEffect(() => {
     async function cargarHome() {
       try {
-        const [meRes, puntosRes] = await Promise.all([
+        const [meRes, puntosRes, estRes] = await Promise.all([
           fetch(`${API_BASE}/auth/me`, { headers: authHeaders() }),
           fetch(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
+          fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
         ])
         const meData = await meRes.json()
         const puntosData = await puntosRes.json()
+        const estData = await estRes.json()
         setUserData(meData.user)
         setBalance(puntosData.balance || 0)
+        setEstancias(estData.estancias || [])
       } catch (err) {
         console.error('Error cargando home:', err)
       }
     }
     cargarHome()
   }, [])
+
+  async function handleEstanciaSubmit(e) {
+    e.preventDefault()
+    setAlert(null)
+    setEstanciaLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/lealtad/estancias`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ fecha_check_in: checkIn, fecha_check_out: checkOut }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setAlert({ message: data.error || 'Error al registrar estancia.', type: 'error' }); return }
+      setAlert({ message: '¡Estancia registrada! Pendiente de aprobación por el administrador.', type: 'success' })
+      setCheckIn(''); setCheckOut('')
+      // Reload data
+      const [puntosRes, estRes] = await Promise.all([
+        fetch(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
+        fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
+      ])
+      const puntosData = await puntosRes.json()
+      const estData = await estRes.json()
+      setBalance(puntosData.balance || 0)
+      setEstancias(estData.estancias || [])
+    } catch {
+      setAlert({ message: 'Error de conexión.', type: 'error' })
+    } finally {
+      setEstanciaLoading(false)
+    }
+  }
 
   const membresia = userData ? pad(userData.id, 4) : '—'
   const numTarjeta = userData ? pad(userData.id, 8) : '—'
@@ -112,6 +153,76 @@ export default function HomePage() {
         </div>
 
         <Link to="/recompensas" className="btn-ch-primary home-canjear-btn">Canjear Puntos</Link>
+
+        {/* ── Registrar Estancia ── */}
+        <div className="home-estancia-section">
+          <button
+            className="home-estancia-toggle"
+            onClick={() => setShowEstancia(!showEstancia)}
+          >
+            <div className="home-estancia-toggle-left">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span>Registrar Estancia</span>
+            </div>
+            <svg
+              width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              style={{ transition: 'transform .2s', transform: showEstancia ? 'rotate(180deg)' : 'rotate(0)' }}
+            >
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          {showEstancia && (
+            <div className="home-estancia-body">
+              {alert && <div className={`home-estancia-alert ${alert.type}`}>{alert.message}</div>}
+              <p className="home-estancia-hint">Registra las fechas de tu estancia. Un administrador la revisará y asignará tus puntos.</p>
+              <form className="home-estancia-form" onSubmit={handleEstanciaSubmit} noValidate>
+                <div className="home-estancia-row">
+                  <div className="home-estancia-field">
+                    <label>Check-in</label>
+                    <input
+                      type="date"
+                      value={checkIn}
+                      onChange={(e) => setCheckIn(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="home-estancia-field">
+                    <label>Check-out</label>
+                    <input
+                      type="date"
+                      value={checkOut}
+                      onChange={(e) => setCheckOut(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <button type="submit" className="btn-ch-primary" disabled={estanciaLoading} style={{ marginTop: 4 }}>
+                  {estanciaLoading ? 'Registrando...' : 'Registrar Estancia'}
+                </button>
+              </form>
+
+              {estancias.length > 0 && (
+                <div className="home-estancia-history">
+                  <p className="home-estancia-history-title">Últimas estancias</p>
+                  {estancias.slice(0, 5).map((est, i) => (
+                    <div key={i} className="home-estancia-item">
+                      <div>
+                        <span className="home-estancia-item-title">
+                          {new Date(est.fecha_check_in).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })} — {new Date(est.fecha_check_out).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div className="home-estancia-item-right">
+                        <span className={`home-estancia-badge ${est.estado || 'pendiente'}`}>{est.estado || 'pendiente'}</span>
+                        {est.puntos_ganados > 0 && <span className="home-estancia-pts">+{est.puntos_ganados} pts</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       <BottomNav />
     </div>

@@ -5,7 +5,7 @@ import CielitoLogo from './CielitoLogo'
 
 export default function SideMenu() {
   const [open, setOpen] = useState(false)
-  const { clearSession } = useAuth()
+  const { clearSession, user } = useAuth()
   const location = useLocation()
 
   const currentPage = location.pathname.replace('/', '')
@@ -48,6 +48,17 @@ export default function SideMenu() {
         </div>
         <h2 className="side-menu-question">¿Que necesitas hoy?</h2>
         <nav className="side-menu-nav">
+          {user?.tipo_usuario === 'admin' && (
+            <Link
+              to="/admin"
+              className={`side-menu-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
+              onClick={() => setOpen(false)}
+              style={{ background: 'rgba(45,106,80,.08)', fontWeight: 600 }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>
+              Panel Admin
+            </Link>
+          )}
           {menuItems.map((item) => (
             <Link
               key={item.page}

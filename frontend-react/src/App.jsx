@@ -17,9 +17,23 @@ import CambiarPasswordPage from './pages/CambiarPasswordPage'
 import EditarPerfilPage from './pages/EditarPerfilPage'
 import NotificacionesPage from './pages/NotificacionesPage'
 
+import AdminReportesPage from './pages/admin/AdminReportesPage'
+import AdminUsuariosPage from './pages/admin/AdminUsuariosPage'
+import AdminPuntosPage from './pages/admin/AdminPuntosPage'
+import AdminEstanciasPage from './pages/admin/AdminEstanciasPage'
+import AdminPremiosPage from './pages/admin/AdminPremiosPage'
+import AdminCanjesPage from './pages/admin/AdminCanjesPage'
+
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useAuth()
   if (!isLoggedIn) return <Navigate to="/login" replace />
+  return children
+}
+
+function AdminRoute({ children }) {
+  const { isLoggedIn, user } = useAuth()
+  if (!isLoggedIn) return <Navigate to="/login" replace />
+  if (user?.tipo_usuario !== 'admin') return <Navigate to="/home" replace />
   return children
 }
 
@@ -48,6 +62,13 @@ export default function App() {
       <Route path="/acerca" element={<ProtectedRoute><AcercaPage /></ProtectedRoute>} />
       <Route path="/condiciones" element={<ProtectedRoute><CondicionesPage /></ProtectedRoute>} />
       <Route path="/soporte" element={<ProtectedRoute><SoportePage /></ProtectedRoute>} />
+
+      <Route path="/admin" element={<AdminRoute><AdminReportesPage /></AdminRoute>} />
+      <Route path="/admin/usuarios" element={<AdminRoute><AdminUsuariosPage /></AdminRoute>} />
+      <Route path="/admin/puntos" element={<AdminRoute><AdminPuntosPage /></AdminRoute>} />
+      <Route path="/admin/estancias" element={<AdminRoute><AdminEstanciasPage /></AdminRoute>} />
+      <Route path="/admin/premios" element={<AdminRoute><AdminPremiosPage /></AdminRoute>} />
+      <Route path="/admin/canjes" element={<AdminRoute><AdminCanjesPage /></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
