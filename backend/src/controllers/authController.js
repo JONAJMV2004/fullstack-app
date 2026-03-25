@@ -8,7 +8,7 @@ const TOKEN_EXPIRES_IN = '7d';
 
 function signToken(usuario) {
   return jwt.sign(
-    { id: usuario.id, email: usuario.email },
+    { id: usuario.id, email: usuario.email, tipo_usuario: usuario.tipo_usuario },
     process.env.JWT_SECRET,
     { expiresIn: TOKEN_EXPIRES_IN }
   );
@@ -146,6 +146,17 @@ exports.oauthCallback = async (req, res) => {
   } catch (err) {
     console.error('OAuth callback error:', err);
     return res.status(500).json({ error: 'Error del servidor en OAuth callback.' });
+  }
+};
+
+// DELETE /api/auth/me  (protegida — elimina la cuenta del usuario autenticado)
+exports.deleteMe = async (req, res) => {
+  try {
+    await UsuarioModel.delete(req.user.id);
+    return res.status(200).json({ message: 'Cuenta eliminada.' });
+  } catch (err) {
+    console.error('DeleteMe error:', err);
+    return res.status(500).json({ error: 'Error al eliminar cuenta.' });
   }
 };
 

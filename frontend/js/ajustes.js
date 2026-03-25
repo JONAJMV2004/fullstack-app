@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:5000/api';
+Auth.requireAuth();
+
 const token = Auth.getToken();
 const alertBox = document.getElementById('alert');
 
@@ -34,8 +35,7 @@ document.getElementById('modal-confirm').addEventListener('click', async () => {
   btn.disabled = true;
 
   try {
-    const user = Auth.getUser();
-    const res = await fetch(`${API_BASE}/users/${user.id}`, {
+    const res = await fetch('http://localhost:5000/api/auth/me', {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` },
     });
