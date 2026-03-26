@@ -88,6 +88,13 @@ exports.updateEstancia = async (req, res) => {
     if (estado !== undefined) updates.estado = estado;
     if (puntos_ganados !== undefined) updates.puntos_ganados = parseInt(puntos_ganados);
 
+    // Fetch current estancia to check previous state
+    const { data: current } = await supabaseAdmin
+      .from('estancias')
+      .select('estado, puntos_ganados, usuario_id, fecha_check_in, fecha_check_out')
+      .eq('id', id)
+      .single();
+
     const { data, error } = await supabaseAdmin
       .from('estancias')
       .update(updates)
@@ -95,6 +102,20 @@ exports.updateEstancia = async (req, res) => {
       .select('*')
       .single();
     if (error) throw error;
+
+    // When approving a pending estancia with points, create the points entry
+    if (estado === 'aprobado' && current && current.estado !== 'aprobado' && parseInt(puntos_ganados) > 0) {
+      const checkIn = new Date(current.fecha_check_in).toLocaleDateString('es-MX');
+      const checkOut = new Date(current.fecha_check_out).toLocaleDateString('es-MX');
+      await supabaseAdmin
+        .from('puntos')
+        .insert([{
+          usuario_id: current.usuario_id,
+          descripcion: `Estancia ${checkIn} – ${checkOut}`,
+          puntos: parseInt(puntos_ganados),
+        }]);
+    }
+
     return res.json({ message: 'Estancia actualizada.', estancia: data });
   } catch (err) {
     console.error('Admin updateEstancia:', err);
@@ -108,10 +129,10 @@ exports.getPremios = async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('premios')
-      .select('identificación, nombre, puntos_necesarios, disponibilidad')
-      .order('identificación', { ascending: true });
+      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .order('id', { ascending: true });
     if (error) throw error;
-    return res.json({ premios: (data || []).map(p => ({ ...p, id: p['identificación'] })) });
+    return res.json({ premios: data || [] });
   } catch (err) {
     console.error('Admin getPremios:', err);
     return res.status(500).json({ error: 'Error al obtener premios.' });
@@ -127,10 +148,10 @@ exports.createPremio = async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('premios')
       .insert([{ nombre, puntos_necesarios: parseInt(puntos_necesarios), disponibilidad: parseInt(disponibilidad) || 0 }])
-      .select('identificación, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad')
       .single();
     if (error) throw error;
-    return res.status(201).json({ message: 'Premio creado.', premio: { ...data, id: data['identificación'] } });
+    return res.status(201).json({ message: 'Premio creado.', premio: data });
   } catch (err) {
     console.error('Admin createPremio:', err);
     return res.status(500).json({ error: 'Error al crear premio.' });
@@ -149,11 +170,11 @@ exports.updatePremio = async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('premios')
       .update(updates)
-      .eq('identificación', id)
-      .select('identificación, nombre, puntos_necesarios, disponibilidad')
+      .eq('id', id)
+      .select('id, nombre, puntos_necesarios, disponibilidad')
       .single();
     if (error) throw error;
-    return res.json({ message: 'Premio actualizado.', premio: { ...data, id: data['identificación'] } });
+    return res.json({ message: 'Premio actualizado.', premio: data });
   } catch (err) {
     console.error('Admin updatePremio:', err);
     return res.status(500).json({ error: 'Error al actualizar premio.' });
@@ -163,7 +184,7 @@ exports.updatePremio = async (req, res) => {
 exports.deletePremio = async (req, res) => {
   try {
     const { id } = req.params;
-    const { error } = await supabaseAdmin.from('premios').delete().eq('identificación', id);
+    const { error } = await supabaseAdmin.from('premios').delete().eq('id', id);
     if (error) throw error;
     return res.json({ message: 'Premio eliminado.' });
   } catch (err) {
@@ -179,7 +200,7 @@ exports.getCanjes = async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('canjes')
       .select('*, usuarios(nombre, email), premios(nombre)')
-      .order('fecha_canje', { ascending: false });
+      .order('fecha', { ascending: false });
     if (error) throw error;
     return res.json({ canjes: data });
   } catch (err) {
@@ -201,7 +222,7 @@ exports.validarCanje = async (req, res) => {
 
     if (error || !canje) return res.status(404).json({ error: 'Código no encontrado.' });
 
-    const expiracion = new Date(canje.fecha_canje);
+    const expiracion = new Date(canje.fecha);
     expiracion.setDate(expiracion.getDate() + 30);
     if (new Date() > expiracion)
       return res.status(410).json({ error: 'Código expirado.', canje });

@@ -172,3 +172,38 @@ exports.getMe = async (req, res) => {
     return res.status(500).json({ error: 'Error del servidor.' });
   }
 };
+
+// PUT /api/auth/update-password  (protegida)
+exports.updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ error: 'La contraseña actual y la nueva contraseña son requeridas.' });
+
+    if (newPassword.length < 6)
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+
+    if (currentPassword === newPassword)
+      return res.status(400).json({ error: 'La nueva contraseña debe ser diferente a la actual.' });
+
+    const usuario = await UsuarioModel.findAuthById(req.user.id);
+    if (!usuario)
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+    if (!usuario.password_hash)
+      return res.status(400).json({ error: 'Tu cuenta usa inicio de sesión social y no tiene contraseña local.' });
+
+    const isValidCurrentPassword = await bcrypt.compare(currentPassword, usuario.password_hash);
+    if (!isValidCurrentPassword)
+      return res.status(401).json({ error: 'La contraseña actual no es correcta.' });
+
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await UsuarioModel.update(usuario.id, { passwordHash });
+
+    return res.status(200).json({ message: 'Contraseña actualizada correctamente.' });
+  } catch (err) {
+    console.error('UpdatePassword error:', err);
+    return res.status(500).json({ error: 'Error del servidor al actualizar la contraseña.' });
+  }
+};

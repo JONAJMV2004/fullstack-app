@@ -18,4 +18,7 @@ router.post('/oauth/callback', authController.oauthCallback);
 router.get('/me',    verifyToken, authController.getMe);
 router.delete('/me', verifyToken, authController.deleteMe);
 
+// Protected: update user password
+router.put('/update-password', verifyToken, authController.updatePassword);
+
 module.exports = router;

@@ -46,6 +46,12 @@ CREATE POLICY "Service role full access"
   USING (true)
   WITH CHECK (true);
 
+-- ─── Estancias table ──────────────────────────────────────────────────────────
+-- If the constraint already exists with old values, run:
+--   ALTER TABLE estancias DROP CONSTRAINT estancias_estado_check;
+--   ALTER TABLE estancias ADD CONSTRAINT estancias_estado_check
+--     CHECK (estado IN ('pendiente', 'aprobado', 'rechazado'));
+
 -- ─── Sample data (optional, for local testing) ────────────────────────────────
 -- INSERT INTO public.users (name, email, password_hash, provider)
 -- VALUES ('Test User', 'test@example.com', '<bcrypt_hash>', 'local');
