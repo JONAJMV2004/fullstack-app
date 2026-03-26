@@ -6,22 +6,21 @@ const PremioModel = {
   async getAll() {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select('identificación, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad')
       .gt('disponibilidad', 0)
       .order('puntos_necesarios', { ascending: true });
     if (error) throw error;
-    return (data || []).map(p => ({ ...p, id: p['identificación'] }));
+    return data || [];
   },
 
   async getById(id) {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select('identificación, nombre, puntos_necesarios, disponibilidad')
-      .eq('identificación', id)
+      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .eq('id', id)
       .single();
     if (error && error.code !== 'PGRST116') throw error;
-    if (!data) return null;
-    return { ...data, id: data['identificación'] };
+    return data || null;
   },
 
   async decrementDisponibilidad(id) {
@@ -30,11 +29,11 @@ const PremioModel = {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
       .update({ disponibilidad: premio.disponibilidad - 1 })
-      .eq('identificación', id)
-      .select('identificación, nombre, puntos_necesarios, disponibilidad')
+      .eq('id', id)
+      .select('id, nombre, puntos_necesarios, disponibilidad')
       .single();
     if (error) throw error;
-    return { ...data, id: data['identificación'] };
+    return data;
   },
 };
 

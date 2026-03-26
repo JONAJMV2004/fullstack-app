@@ -10,13 +10,10 @@ const CanjeModel = require('../models/canjeModel');
 exports.registrarEstancia = async (req, res) => {
   try {
     const usuarioId = req.user.id;
-    const { fecha_check_in, fecha_check_out, puntos_ganados } = req.body;
+    const { fecha_check_in, fecha_check_out } = req.body;
 
-    if (!fecha_check_in || !fecha_check_out || !puntos_ganados)
-      return res.status(400).json({ error: 'check_in, check_out y puntos_ganados son requeridos.' });
-
-    if (puntos_ganados < 1)
-      return res.status(400).json({ error: 'Los puntos ganados deben ser mayor a 0.' });
+    if (!fecha_check_in || !fecha_check_out)
+      return res.status(400).json({ error: 'check_in y check_out son requeridos.' });
 
     if (new Date(fecha_check_out) <= new Date(fecha_check_in))
       return res.status(400).json({ error: 'La fecha de check-out debe ser posterior al check-in.' });
@@ -25,20 +22,11 @@ exports.registrarEstancia = async (req, res) => {
       usuarioId,
       fechaCheckIn: fecha_check_in,
       fechaCheckOut: fecha_check_out,
-      puntosGanados: puntos_ganados,
-      estado: 'confirmada',
+      puntosGanados: 0,
+      estado: 'pendiente',
     });
 
-    // Generar movimiento de puntos automáticamente
-    const checkIn = new Date(fecha_check_in).toLocaleDateString('es-MX');
-    const checkOut = new Date(fecha_check_out).toLocaleDateString('es-MX');
-    await PuntosModel.addEntry({
-      usuarioId,
-      descripcion: `Estancia ${checkIn} – ${checkOut}`,
-      puntos: puntos_ganados,
-    });
-
-    return res.status(201).json({ message: 'Estancia registrada.', estancia });
+    return res.status(201).json({ message: 'Estancia registrada. Pendiente de aprobación.', estancia });
   } catch (err) {
     console.error('registrarEstancia error:', err);
     return res.status(500).json({ error: 'Error al registrar estancia.' });
