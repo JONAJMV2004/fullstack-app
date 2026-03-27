@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../config/supabase');
+const bcrypt = require('bcryptjs');
 
 // ── Usuarios ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,57 @@ exports.deleteUsuario = async (req, res) => {
   } catch (err) {
     console.error('Admin deleteUsuario:', err);
     return res.status(500).json({ error: 'Error al eliminar usuario.' });
+  }
+};
+
+exports.updateUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipo_usuario, nombre } = req.body;
+    const updates = {};
+    if (tipo_usuario !== undefined) {
+      const roles = ['cliente', 'admin', 'staff'];
+      if (!roles.includes(tipo_usuario))
+        return res.status(400).json({ error: 'Rol inválido.' });
+      updates.tipo_usuario = tipo_usuario;
+    }
+    if (nombre !== undefined) updates.nombre = nombre.trim();
+    if (!Object.keys(updates).length)
+      return res.status(400).json({ error: 'Nada que actualizar.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('usuarios')
+      .update(updates)
+      .eq('id', id)
+      .select('id, nombre, email, tipo_usuario, provider, fecha_registro')
+      .single();
+    if (error) throw error;
+    return res.json({ message: 'Usuario actualizado.', usuario: data });
+  } catch (err) {
+    console.error('Admin updateUsuario:', err);
+    return res.status(500).json({ error: 'Error al actualizar usuario.' });
+  }
+};
+
+exports.cambiarPasswordUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nueva_password } = req.body;
+    if (!nueva_password || nueva_password.length < 6)
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+
+    const hash = await bcrypt.hash(nueva_password, 10);
+
+    const { error } = await supabaseAdmin
+      .from('usuarios')
+      .update({ password_hash: hash })
+      .eq('id', id);
+    if (error) throw error;
+
+    return res.json({ message: 'Contraseña actualizada correctamente.' });
+  } catch (err) {
+    console.error('Admin cambiarPasswordUsuario:', err);
+    return res.status(500).json({ error: 'Error al cambiar contraseña.' });
   }
 };
 
@@ -129,7 +181,7 @@ exports.getPremios = async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('premios')
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
       .order('id', { ascending: true });
     if (error) throw error;
     return res.json({ premios: data || [] });
@@ -148,7 +200,7 @@ exports.createPremio = async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('premios')
       .insert([{ nombre, puntos_necesarios: parseInt(puntos_necesarios), disponibilidad: parseInt(disponibilidad) || 0 }])
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
       .single();
     if (error) throw error;
     return res.status(201).json({ message: 'Premio creado.', premio: data });
@@ -171,13 +223,47 @@ exports.updatePremio = async (req, res) => {
       .from('premios')
       .update(updates)
       .eq('id', id)
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
       .single();
     if (error) throw error;
     return res.json({ message: 'Premio actualizado.', premio: data });
   } catch (err) {
     console.error('Admin updatePremio:', err);
     return res.status(500).json({ error: 'Error al actualizar premio.' });
+  }
+};
+
+exports.subirImagenPremio = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'No se recibió ninguna imagen.' });
+
+    const ext      = req.file.originalname.split('.').pop().toLowerCase();
+    const allowed  = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    if (!allowed.includes(ext)) return res.status(400).json({ error: 'Formato no permitido. Usa JPG, PNG o WebP.' });
+
+    const path = `premio-${id}-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('premios')
+      .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabaseAdmin.storage.from('premios').getPublicUrl(path);
+    const imagen_url = urlData.publicUrl;
+
+    const { data, error } = await supabaseAdmin
+      .from('premios')
+      .update({ imagen_url })
+      .eq('id', id)
+      .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
+      .single();
+    if (error) throw error;
+
+    return res.json({ message: 'Imagen subida correctamente.', premio: data, imagen_url });
+  } catch (err) {
+    console.error('Admin subirImagenPremio:', err);
+    return res.status(500).json({ error: 'Error al subir la imagen.' });
   }
 };
 
