@@ -6,7 +6,7 @@ const PremioModel = {
   async getAll() {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria')
       .gt('disponibilidad', 0)
       .order('puntos_necesarios', { ascending: true });
     if (error) throw error;
@@ -16,7 +16,7 @@ const PremioModel = {
   async getById(id) {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria')
       .eq('id', id)
       .single();
     if (error && error.code !== 'PGRST116') throw error;

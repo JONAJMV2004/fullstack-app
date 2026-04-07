@@ -9,6 +9,16 @@ function pad(num, size) {
   return String(num).padStart(size, '0')
 }
 
+function generateCardNumber(userId) {
+  const a = 1664525, c = 1013904223, m = 2 ** 32
+  let s = parseInt(userId) || 1
+  s = (s * a + c) % m; const p1 = String(s % 10000).padStart(4, '0')
+  s = (s * a + c) % m; const p2 = String(s % 10000).padStart(4, '0')
+  s = (s * a + c) % m; const p3 = String(s % 10000).padStart(4, '0')
+  s = (s * a + c) % m; const p4 = String(s % 10000).padStart(4, '0')
+  return `${p1}${p2}${p3}${p4}`
+}
+
 function formatCardNumber(num) {
   return num.replace(/(.{4})/g, '$1 ').trim()
 }
@@ -44,7 +54,7 @@ export default function TarjetaPage() {
   }, [])
 
   const membresia = userData ? pad(userData.id, 4) : '—'
-  const numTarjeta = userData ? pad(userData.id, 8) : '—'
+  const numTarjeta = userData ? generateCardNumber(userData.id) : '0000000000000000'
   const nombre = userData?.nombre || userData?.name || '—'
   const initials = nombre !== '—' ? nombre.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?'
   const nivel = getNivel(balance)
@@ -138,7 +148,7 @@ export default function TarjetaPage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/><polyline points="12 3 12 15"/><path d="M4 7l8-4 8 4"/></svg>
             Canjear Puntos
           </Link>
-          <Link to="/dashboard" className="tc-action-btn-secondary">
+          <Link to="/recompensas?tab=historial" className="tc-action-btn-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
             Ver Historial
           </Link>

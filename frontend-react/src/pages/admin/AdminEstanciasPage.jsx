@@ -67,11 +67,11 @@ export default function AdminEstanciasPage() {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>ID</th><th>Usuario</th><th>Check-in</th><th>Check-out</th><th>Puntos</th><th>Estado</th><th>Acciones</th></tr>
+              <tr><th>ID</th><th>Usuario</th><th>Check-in</th><th>Check-out</th><th>Ubicación</th><th>Puntos</th><th>Estado</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {!filtered.length ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#718096', padding: 24 }}>Sin estancias.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: '#718096', padding: 24 }}>Sin estancias.</td></tr>
               ) : filtered.map(e => (
                 <tr key={e.id}>
                   <td>{e.id}</td>
@@ -81,6 +81,7 @@ export default function AdminEstanciasPage() {
                   </td>
                   <td>{formatDate(e.fecha_check_in)}</td>
                   <td>{formatDate(e.fecha_check_out)}</td>
+                  <td>{e.ubicacion || '—'}</td>
                   <td><strong>{e.puntos_ganados ?? 0}</strong></td>
                   <td><span className={`badge ${e.estado}`}>{e.estado}</span></td>
                   <td style={{ display: 'flex', gap: 6 }}>

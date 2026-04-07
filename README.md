@@ -32,7 +32,7 @@ fullstack-app/
 ├── frontend/
 │   ├── index.html                   # Login / Register page
 │   ├── dashboard.html               # Protected user dashboard
-│   ├── oauth-callback.html          # OAuth redirect handler
+│   ├── /oauth-callback route        # OAuth redirect handler (React Router)
 │   ├── css/
 │   │   └── styles.css
 │   └── js/
@@ -62,7 +62,7 @@ fullstack-app/
 1. Go to **Authentication → Providers** in your Supabase dashboard.
 2. Enable **Google** — enter your Google OAuth Client ID and Secret.
 3. Enable **Facebook** — enter your Facebook App ID and Secret.
-4. Set the **Redirect URL** in each provider to: `http://localhost:3000/oauth-callback.html`
+4. Set the **Redirect URL** in each provider to: `http://localhost:3000/oauth-callback`
 
 > Get Google credentials from [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials.
 > Get Facebook credentials from [Facebook Developers](https://developers.facebook.com/) → Your App → Settings → Basic.
@@ -82,7 +82,7 @@ JWT_SECRET=your_random_64_char_secret
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-OAUTH_REDIRECT_URL=http://localhost:3000/oauth-callback.html
+OAUTH_REDIRECT_URL=http://localhost:3000/oauth-callback
 FRONTEND_URL=http://localhost:3000
 ```
 
@@ -153,7 +153,7 @@ Frontend runs at: `http://localhost:3000`
 ### OAuth (Google / Facebook)
 1. User clicks button → frontend GETs `/api/auth/oauth/google` or `/facebook`
 2. Backend returns Supabase OAuth URL → frontend redirects the browser
-3. User authenticates with provider → Supabase redirects to `oauth-callback.html#access_token=...`
+3. User authenticates with provider → Supabase redirects to `/oauth-callback#access_token=...`
 4. `oauth-callback.js` extracts tokens, POSTs to `/api/auth/oauth/callback`
 5. Backend verifies Supabase session, upserts user in DB, returns app JWT
 6. Frontend stores JWT, redirects to dashboard

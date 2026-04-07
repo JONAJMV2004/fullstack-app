@@ -11,6 +11,7 @@ export default function AdminPremiosPage() {
   const [fNombre, setFNombre] = useState('')
   const [fPuntos, setFPuntos] = useState('')
   const [fDisp, setFDisp] = useState('')
+  const [fCategoria, setFCategoria] = useState('')
 
   // Modals
   const [editTarget, setEditTarget] = useState(null)
@@ -34,12 +35,12 @@ export default function AdminPremiosPage() {
       const res = await fetch(`${API_BASE}/admin/premios`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ nombre: fNombre.trim(), puntos_necesarios: parseInt(fPuntos), disponibilidad: parseInt(fDisp) || 0 }),
+        body: JSON.stringify({ nombre: fNombre.trim(), puntos_necesarios: parseInt(fPuntos), disponibilidad: parseInt(fDisp) || 0, categoria: fCategoria.trim() || 'general' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setAlert({ type: 'success', msg: 'Premio creado.' })
-      setFNombre(''); setFPuntos(''); setFDisp('')
+      setFNombre(''); setFPuntos(''); setFDisp(''); setFCategoria('')
       cargar()
     } catch (err) { setAlert({ type: 'error', msg: err.message }) }
   }
@@ -50,7 +51,7 @@ export default function AdminPremiosPage() {
       const res = await fetch(`${API_BASE}/admin/premios/${editTarget.id}`, {
         method: 'PATCH',
         headers: authHeaders(),
-        body: JSON.stringify({ nombre: editTarget.nombre, puntos_necesarios: parseInt(editTarget.puntos_necesarios), disponibilidad: parseInt(editTarget.disponibilidad) }),
+        body: JSON.stringify({ nombre: editTarget.nombre, puntos_necesarios: parseInt(editTarget.puntos_necesarios), disponibilidad: parseInt(editTarget.disponibilidad), categoria: editTarget.categoria }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -92,6 +93,10 @@ export default function AdminPremiosPage() {
             <label>Disponibilidad</label>
             <input className="admin-input" type="number" value={fDisp} onChange={e => setFDisp(e.target.value)} placeholder="10" />
           </div>
+          <div className="admin-form-group">
+            <label>Categoria</label>
+            <input className="admin-input" value={fCategoria} onChange={e => setFCategoria(e.target.value)} placeholder="General" />
+          </div>
           <button className="btn-admin primary" type="submit">Agregar</button>
         </form>
       </div>
@@ -102,17 +107,18 @@ export default function AdminPremiosPage() {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>ID</th><th>Nombre</th><th>Puntos</th><th>Disponibilidad</th><th>Acciones</th></tr>
+              <tr><th>ID</th><th>Nombre</th><th>Puntos</th><th>Disponibilidad</th><th>Categoria</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {!premios.length ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', color: '#718096', padding: 24 }}>Sin premios.</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: '#718096', padding: 24 }}>Sin premios.</td></tr>
               ) : premios.map(p => (
                 <tr key={p.id}>
                   <td>{p.id}</td>
                   <td><strong>{p.nombre}</strong></td>
                   <td>{p.puntos_necesarios} pts</td>
                   <td><span className={`badge ${p.disponibilidad > 0 ? 'activo' : 'inactivo'}`}>{p.disponibilidad}</span></td>
+                  <td>{p.categoria}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="btn-admin secondary sm" onClick={() => setEditTarget({ ...p })}>Editar</button>
@@ -142,6 +148,10 @@ export default function AdminPremiosPage() {
             <div className="admin-form-group">
               <label>Disponibilidad</label>
               <input className="admin-input" type="number" value={editTarget.disponibilidad} onChange={e => setEditTarget(prev => ({ ...prev, disponibilidad: e.target.value }))} />
+            </div>
+            <div className="admin-form-group">
+              <label>Categoria</label>
+              <input className="admin-input" value={editTarget.categoria} onChange={e => setEditTarget(prev => ({ ...prev, categoria: e.target.value }))} />
             </div>
             <div className="admin-modal-actions">
               <button className="btn-admin secondary" onClick={() => setEditTarget(null)}>Cancelar</button>

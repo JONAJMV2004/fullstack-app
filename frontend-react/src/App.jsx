@@ -23,6 +23,7 @@ import AdminPuntosPage from './pages/admin/AdminPuntosPage'
 import AdminEstanciasPage from './pages/admin/AdminEstanciasPage'
 import AdminPremiosPage from './pages/admin/AdminPremiosPage'
 import AdminCanjesPage from './pages/admin/AdminCanjesPage'
+import AdminUbicacionesPage from './pages/admin/AdminUbicacionesPage'
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useAuth()
@@ -50,6 +51,7 @@ export default function App() {
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/oauth-callback" element={<OAuthCallbackPage />} />
+      <Route path="/oauth-callback.html" element={<OAuthCallbackPage />} />
 
       <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
       <Route path="/recompensas" element={<ProtectedRoute><RecompensasPage /></ProtectedRoute>} />
@@ -69,6 +71,7 @@ export default function App() {
       <Route path="/admin/estancias" element={<AdminRoute><AdminEstanciasPage /></AdminRoute>} />
       <Route path="/admin/premios" element={<AdminRoute><AdminPremiosPage /></AdminRoute>} />
       <Route path="/admin/canjes" element={<AdminRoute><AdminCanjesPage /></AdminRoute>} />
+      <Route path="/admin/ubicaciones" element={<AdminRoute><AdminUbicacionesPage /></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

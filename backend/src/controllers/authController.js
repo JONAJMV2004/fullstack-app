@@ -19,19 +19,20 @@ exports.register = async (req, res) => {
   try {
     const { nombre, name, email, password } = req.body;
     const nombreFinal = nombre || name;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    if (!nombreFinal || !email || !password)
+    if (!nombreFinal || !normalizedEmail || !password)
       return res.status(400).json({ error: 'Nombre, email y contraseña son requeridos.' });
 
     if (password.length < 6)
       return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
 
-    const existing = await UsuarioModel.findByEmail(email);
+    const existing = await UsuarioModel.findByEmail(normalizedEmail);
     if (existing)
       return res.status(409).json({ error: 'Ya existe una cuenta con este email.' });
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const usuario = await UsuarioModel.create({ nombre: nombreFinal, email, passwordHash });
+    const usuario = await UsuarioModel.create({ nombre: nombreFinal, email: normalizedEmail, passwordHash });
     const token = signToken(usuario);
 
     return res.status(201).json({
@@ -49,11 +50,12 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    if (!email || !password)
+    if (!normalizedEmail || !password)
       return res.status(400).json({ error: 'Email y contraseña son requeridos.' });
 
-    const usuario = await UsuarioModel.findByEmail(email);
+    const usuario = await UsuarioModel.findByEmail(normalizedEmail);
     if (!usuario || !usuario.password_hash)
       return res.status(401).json({ error: 'Email o contraseña incorrectos.' });
 
@@ -130,7 +132,7 @@ exports.oauthCallback = async (req, res) => {
 
     const usuario = await UsuarioModel.upsertOAuth({
       nombre,
-      email: supaUser.email,
+      email: String(supaUser.email || '').trim().toLowerCase(),
       provider,
       avatarUrl,
       supabaseAuthId: supaUser.id,

@@ -2,18 +2,24 @@ const { supabaseAdmin } = require('../config/supabase');
 
 const TABLE = 'usuarios';
 
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
 const UsuarioModel = {
   async findByEmail(email) {
+    const normalizedEmail = normalizeEmail(email);
     const { data, error } = await supabaseAdmin
       .from(TABLE)
       .select('*')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .single();
     if (error && error.code !== 'PGRST116') throw error;
     return data;
   },
 
   async findById(id) {
+    
     const { data, error } = await supabaseAdmin
       .from(TABLE)
       .select('id, nombre, email, telefono, tipo_usuario, avatar_url, provider, fecha_registro')
@@ -34,9 +40,10 @@ const UsuarioModel = {
   },
 
   async create({ nombre, email, passwordHash, tipoUsuario = 'cliente' }) {
+    const normalizedEmail = normalizeEmail(email);
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .insert([{ nombre, email, password_hash: passwordHash, tipo_usuario: tipoUsuario, provider: 'local' }])
+      .insert([{ nombre, email: normalizedEmail, password_hash: passwordHash, tipo_usuario: tipoUsuario, provider: 'local' }])
       .select('id, nombre, email, tipo_usuario, provider, fecha_registro')
       .single();
     if (error) throw error;
@@ -44,14 +51,39 @@ const UsuarioModel = {
   },
 
   async upsertOAuth({ nombre, email, provider, avatarUrl, supabaseAuthId }) {
-    const { data, error } = await supabaseAdmin
+    const normalizedEmail = normalizeEmail(email);
+    const existing = await this.findByEmail(normalizedEmail);
+
+    if (existing){
+      const {data,error} = await supabaseAdmin
       .from(TABLE)
-      .upsert(
-        [{ nombre, email, provider, avatar_url: avatarUrl, supabase_auth_id: supabaseAuthId, tipo_usuario: 'cliente' }],
-        { onConflict: 'email', ignoreDuplicates: false }
-      )
+      .update({
+        nombre,
+        provider,
+       avatar_url: avatarUrl,
+       supabase_auth_id: supabaseAuthId
+      })
+      .eq('id', existing.id)
       .select('id, nombre, email, tipo_usuario, provider, avatar_url, fecha_registro')
       .single();
+
+      if (error) throw error;
+      return data;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from(TABLE)
+      .insert([{ 
+        nombre,
+        email: normalizedEmail,
+        provider,
+        avatar_url: avatarUrl,
+        supabase_auth_id: supabaseAuthId,
+        tipo_usuario: 'cliente',
+      }])
+      .select('id, nombre, email, tipo_usuario, provider, avatar_url, fecha_registro')
+      .single();
+      
     if (error) throw error;
     return data;
   },

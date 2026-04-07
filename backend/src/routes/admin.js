@@ -37,4 +37,10 @@ router.post('/canjes/validar', adminCtrl.validarCanje);
 // Reportes
 router.get('/reportes', adminCtrl.getReportes);
 
+// Ubicaciones
+router.get('/ubicaciones',        adminCtrl.getUbicaciones);
+router.post('/ubicaciones',       adminCtrl.createUbicacion);
+router.patch('/ubicaciones/:id',  adminCtrl.updateUbicacion);
+router.delete('/ubicaciones/:id', adminCtrl.deleteUbicacion);;
+
 module.exports = router;

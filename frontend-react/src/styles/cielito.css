@@ -562,6 +562,50 @@ body {
   padding: 24px 0;
 }
 
+/* Historial de canjes */
+.canjes-historial-list { display: flex; flex-direction: column; gap: 10px; }
+
+.canje-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow);
+}
+
+.canje-item-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #f0f8f3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.canje-item-info { flex: 1; min-width: 0; }
+.canje-item-nombre { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+.canje-item-codigo { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.canje-item-codigo strong { color: var(--green); font-family: monospace; }
+.canje-item-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+.badge-canje {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badge-canje.pendiente { background: #FEF3C7; color: #D97706; }
+.badge-canje.usado     { background: #D1FAE5; color: #059669; }
+.badge-canje.expirado  { background: #FEE2E2; color: #DC2626; }
+
 /* ─── Bottom nav ─────────────────────────────────────────────────────────── */
 .bottom-nav {
   position: fixed;

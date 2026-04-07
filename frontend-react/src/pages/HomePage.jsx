@@ -9,6 +9,16 @@ function pad(num, size) {
   return String(num).padStart(size, '0')
 }
 
+function generateCardNumber(userId) {
+  const a = 1664525, c = 1013904223, m = 2 ** 32
+  let s = parseInt(userId) || 1
+  s = (s * a + c) % m; const p1 = String(s % 10000).padStart(4, '0')
+  s = (s * a + c) % m; const p2 = String(s % 10000).padStart(4, '0')
+  s = (s * a + c) % m; const p3 = String(s % 10000).padStart(4, '0')
+  s = (s * a + c) % m; const p4 = String(s % 10000).padStart(4, '0')
+  return `${p1}${p2}${p3}${p4}`
+}
+
 function formatCardNumber(num) {
   return num.replace(/(.{4})/g, '$1 ').trim()
 }
@@ -28,6 +38,8 @@ export default function HomePage() {
   const [showEstancia, setShowEstancia] = useState(false)
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
+  const [ubicacion, setUbicacion] = useState('')
+  const [ubicaciones, setUbicaciones] = useState([])
   const [estanciaLoading, setEstanciaLoading] = useState(false)
   const [estancias, setEstancias] = useState([])
   const [alert, setAlert] = useState(null)
@@ -35,17 +47,20 @@ export default function HomePage() {
   useEffect(() => {
     async function cargarHome() {
       try {
-        const [meRes, puntosRes, estRes] = await Promise.all([
+        const [meRes, puntosRes, estRes, ubicacionesRes] = await Promise.all([
           fetch(`${API_BASE}/auth/me`, { headers: authHeaders() }),
           fetch(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
           fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
+          fetch(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
         ])
         const meData = await meRes.json()
         const puntosData = await puntosRes.json()
         const estData = await estRes.json()
+        const ubicacionesData = await ubicacionesRes.json()
         setUserData(meData.user)
         setBalance(puntosData.balance || 0)
         setEstancias(estData.estancias || [])
+        setUbicaciones(ubicacionesData.ubicaciones || [])
       } catch (err) {
         console.error('Error cargando home:', err)
       }
@@ -56,26 +71,35 @@ export default function HomePage() {
   async function handleEstanciaSubmit(e) {
     e.preventDefault()
     setAlert(null)
+
+    if (!ubicacion) {
+      setAlert({ message: 'Selecciona una ubicación.', type: 'error' })
+      return
+    }
+
     setEstanciaLoading(true)
     try {
       const res = await fetch(`${API_BASE}/lealtad/estancias`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ fecha_check_in: checkIn, fecha_check_out: checkOut }),
+        body: JSON.stringify({ fecha_check_in: checkIn, fecha_check_out: checkOut, ubicacion }),
       })
       const data = await res.json()
       if (!res.ok) { setAlert({ message: data.error || 'Error al registrar estancia.', type: 'error' }); return }
       setAlert({ message: '¡Estancia registrada! Pendiente de aprobación por el administrador.', type: 'success' })
-      setCheckIn(''); setCheckOut('')
+      setCheckIn(''); setCheckOut(''); setUbicacion('')
       // Reload data
-      const [puntosRes, estRes] = await Promise.all([
+      const [puntosRes, estRes, ubicacionesRes] = await Promise.all([
         fetch(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
         fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
+        fetch(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
       ])
       const puntosData = await puntosRes.json()
       const estData = await estRes.json()
+      const ubicacionesData = await ubicacionesRes.json()
       setBalance(puntosData.balance || 0)
       setEstancias(estData.estancias || [])
+      setUbicaciones(ubicacionesData.ubicaciones || [])
     } catch {
       setAlert({ message: 'Error de conexión.', type: 'error' })
     } finally {
@@ -84,7 +108,7 @@ export default function HomePage() {
   }
 
   const membresia = userData ? pad(userData.id, 4) : '—'
-  const numTarjeta = userData ? pad(userData.id, 8) : '—'
+  const numTarjeta = userData ? generateCardNumber(userData.id) : '0000000000000000'
   const nombre = userData?.nombre || userData?.name || '—'
   const initials = nombre !== '—' ? nombre.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?'
   const nivel = getNivel(balance)
@@ -177,6 +201,15 @@ export default function HomePage() {
               {alert && <div className={`home-estancia-alert ${alert.type}`}>{alert.message}</div>}
               <p className="home-estancia-hint">Registra las fechas de tu estancia. Un administrador la revisará y asignará tus puntos.</p>
               <form className="home-estancia-form" onSubmit={handleEstanciaSubmit} noValidate>
+                <div className="home-estancia-field" style={{ marginBottom: 10 }}>
+                  <label>Ubicación</label>
+                  <select value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} required>
+                    <option value="">Selecciona una ubicación</option>
+                    {ubicaciones.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="home-estancia-row">
                   <div className="home-estancia-field">
                     <label>Check-in</label>
@@ -200,6 +233,11 @@ export default function HomePage() {
                 <button type="submit" className="btn-ch-primary" disabled={estanciaLoading} style={{ marginTop: 4 }}>
                   {estanciaLoading ? 'Registrando...' : 'Registrar Estancia'}
                 </button>
+                {ubicaciones.length === 0 && (
+                  <p className="home-estancia-hint" style={{ marginTop: 8 }}>
+                    No hay ubicaciones disponibles en la base de datos.
+                  </p>
+                )}
               </form>
 
               {estancias.length > 0 && (

@@ -129,7 +129,7 @@ exports.getPremios = async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('premios')
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria')
       .order('id', { ascending: true });
     if (error) throw error;
     return res.json({ premios: data || [] });
@@ -141,14 +141,14 @@ exports.getPremios = async (req, res) => {
 
 exports.createPremio = async (req, res) => {
   try {
-    const { nombre, puntos_necesarios, disponibilidad } = req.body;
+    const { nombre, puntos_necesarios, disponibilidad, categoria } = req.body;
     if (!nombre || puntos_necesarios === undefined)
       return res.status(400).json({ error: 'nombre y puntos_necesarios son requeridos.' });
 
     const { data, error } = await supabaseAdmin
       .from('premios')
-      .insert([{ nombre, puntos_necesarios: parseInt(puntos_necesarios), disponibilidad: parseInt(disponibilidad) || 0 }])
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .insert([{ nombre, puntos_necesarios: parseInt(puntos_necesarios), disponibilidad: parseInt(disponibilidad) || 0, categoria: categoria || 'general' }])
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria')
       .single();
     if (error) throw error;
     return res.status(201).json({ message: 'Premio creado.', premio: data });
@@ -161,17 +161,18 @@ exports.createPremio = async (req, res) => {
 exports.updatePremio = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, puntos_necesarios, disponibilidad } = req.body;
+    const { nombre, puntos_necesarios, disponibilidad, categoria } = req.body;
     const updates = {};
     if (nombre !== undefined) updates.nombre = nombre;
     if (puntos_necesarios !== undefined) updates.puntos_necesarios = parseInt(puntos_necesarios);
     if (disponibilidad !== undefined) updates.disponibilidad = parseInt(disponibilidad);
+    if (categoria !== undefined) updates.categoria = categoria;
 
     const { data, error } = await supabaseAdmin
       .from('premios')
       .update(updates)
       .eq('id', id)
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria')
       .single();
     if (error) throw error;
     return res.json({ message: 'Premio actualizado.', premio: data });
@@ -199,7 +200,7 @@ exports.getCanjes = async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('canjes')
-      .select('*, usuarios(nombre, email), premios(nombre)')
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
       .order('fecha', { ascending: false });
     if (error) throw error;
     return res.json({ canjes: data });
@@ -216,7 +217,7 @@ exports.validarCanje = async (req, res) => {
 
     const { data: canje, error } = await supabaseAdmin
       .from('canjes')
-      .select('*, usuarios(nombre, email), premios(nombre)')
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
       .eq('codigo_unico', codigo.trim().toUpperCase())
       .single();
 
@@ -234,7 +235,7 @@ exports.validarCanje = async (req, res) => {
       .from('canjes')
       .update({ estado: 'aprobado' })
       .eq('id', canje.id)
-      .select('*, usuarios(nombre, email), premios(nombre)')
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
       .single();
     if (updateErr) throw updateErr;
 
@@ -278,5 +279,76 @@ exports.getReportes = async (req, res) => {
   } catch (err) {
     console.error('Admin getReportes:', err);
     return res.status(500).json({ error: 'Error al obtener reportes.' });
+  }
+};
+
+// ── Ubicaciones ──────────────────────────────────────────────────────────────────
+
+exports.getUbicaciones = async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('ubicaciones')
+      .select('id, nombre, activa')
+      .order('nombre', { ascending: true });
+    if (error) throw error;
+    return res.json({ ubicaciones: data || [] });
+  } catch (err) {
+    console.error('Admin getUbicaciones:', err);
+    return res.status(500).json({ error: 'Error al obtener ubicaciones.' });
+  }
+};
+
+exports.createUbicacion = async (req, res) => {
+  try {
+    const nombre = String(req.body.nombre || '').trim();
+    if (!nombre)
+      return res.status(400).json({ error: 'nombre es requerido.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('ubicaciones')
+      .insert([{ nombre }])
+      .select('id, nombre, activa')
+      .single();
+    if (error) throw error;
+    return res.status(201).json({ message: 'Ubicación creada.', ubicacion: data });
+  } catch (err) {
+    console.error('Admin createUbicacion:', err);
+    return res.status(500).json({ error: 'Error al crear ubicación.' });
+  }
+};
+
+exports.updateUbicacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = {};
+    if (req.body.nombre !== undefined) updates.nombre = String(req.body.nombre).trim();
+    if (req.body.activa !== undefined) updates.activa = Boolean(req.body.activa);
+
+    if (!Object.keys(updates).length)
+      return res.status(400).json({ error: 'Nada que actualizar.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('ubicaciones')
+      .update(updates)
+      .eq('id', id)
+      .select('id, nombre, activa')
+      .single();
+    if (error) throw error;
+    return res.json({ message: 'Ubicación actualizada.', ubicacion: data });
+  } catch (err) {
+    console.error('Admin updateUbicacion:', err);
+    return res.status(500).json({ error: 'Error al actualizar ubicación.' });
+  }
+};
+
+exports.deleteUbicacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabaseAdmin.from('ubicaciones').delete().eq('id', id);
+    if (error) throw error;
+    return res.json({ message: 'Ubicación eliminada.' });
+  } catch (err) {
+    console.error('Admin deleteUbicacion:', err);
+    return res.status(500).json({ error: 'Error al eliminar ubicación.' });
   }
 };
