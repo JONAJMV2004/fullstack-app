@@ -14,8 +14,8 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     autoRefreshToken: false,
     persistSession: false,
   },
-});
-
+});  
+//hola
 // Public client (anon key) — for auth operations like signIn/signUp
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
