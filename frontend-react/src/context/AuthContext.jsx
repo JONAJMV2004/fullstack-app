@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 
-const API_BASE = '/api'
+const rawApiBase = import.meta.env.VITE_API_BASE_URL || '/api'
+const API_BASE = rawApiBase.replace(/\/$/, '')
 const TOKEN_KEY = 'app_token'
 const USER_KEY = 'app_user'
 

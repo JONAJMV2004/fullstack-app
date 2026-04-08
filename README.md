@@ -157,3 +157,44 @@ Frontend runs at: `http://localhost:3000`
 4. `oauth-callback.js` extracts tokens, POSTs to `/api/auth/oauth/callback`
 5. Backend verifies Supabase session, upserts user in DB, returns app JWT
 6. Frontend stores JWT, redirects to dashboard
+
+---
+
+## Deploy en Render (Backend + Frontend React)
+
+Este repositorio ya incluye `render.yaml` para crear ambos servicios desde Blueprint.
+
+### 1) Crear los servicios
+
+1. Sube este repo a GitHub.
+2. En Render: **New +** → **Blueprint**.
+3. Selecciona tu repositorio para que Render lea `render.yaml`.
+
+Se crearán:
+- `fullstack-app-backend` (Web Service Node)
+- `fullstack-app-frontend` (Static Site Vite)
+
+### 2) Configurar variables en Render
+
+En el servicio **backend**:
+- `JWT_SECRET`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `FRONTEND_URL` = URL del frontend en Render (ej. `https://fullstack-app-frontend.onrender.com`)
+- `OAUTH_REDIRECT_URL` = `https://<tu-frontend>.onrender.com/oauth-callback`
+
+En el servicio **frontend**:
+- `VITE_API_BASE_URL` = `https://<tu-backend>.onrender.com/api`
+
+### 3) Ajustar OAuth provider en Supabase
+
+En Supabase Authentication Providers (Google/Facebook), usa:
+- Redirect URL: `https://<tu-frontend>.onrender.com/oauth-callback`
+
+### 4) Probar despliegue
+
+- Backend health: `https://<tu-backend>.onrender.com/api/health`
+- Frontend: `https://<tu-frontend>.onrender.com`
+
+Si ves error CORS, revisa que `FRONTEND_URL` coincida exactamente con el dominio del sitio frontend (sin slash final).
