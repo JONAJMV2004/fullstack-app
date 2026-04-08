@@ -84,7 +84,7 @@ exports.getPuntos = async (req, res) => {
     });
   } catch (err) {
     console.error('getPuntos error:', err);
-    return res.status(500).json({ error: 'Error al obtener puntos.' });
+    return res.status(500).json({ error: err.message || 'Error al obtener puntos.' });
   }
 };
 

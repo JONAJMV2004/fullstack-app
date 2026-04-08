@@ -1,7 +1,10 @@
 const express = require('express');
+const multer  = require('multer');
 const router  = express.Router();
 const { verifyToken } = require('../middleware/auth');
 const adminCtrl = require('../controllers/adminController');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 // Middleware: solo admins
 function requireAdmin(req, res, next) {
@@ -13,8 +16,10 @@ function requireAdmin(req, res, next) {
 router.use(verifyToken, requireAdmin);
 
 // Usuarios
-router.get('/usuarios',        adminCtrl.getUsuarios);
-router.delete('/usuarios/:id', adminCtrl.deleteUsuario);
+router.get('/usuarios',                adminCtrl.getUsuarios);
+router.patch('/usuarios/:id',          adminCtrl.updateUsuario);
+router.delete('/usuarios/:id',         adminCtrl.deleteUsuario);
+router.patch('/usuarios/:id/password', adminCtrl.cambiarPasswordUsuario);
 
 // Puntos
 router.get('/puntos',    adminCtrl.getPuntos);
@@ -25,10 +30,11 @@ router.get('/estancias',        adminCtrl.getEstancias);
 router.patch('/estancias/:id',  adminCtrl.updateEstancia);
 
 // Premios
-router.get('/premios',        adminCtrl.getPremios);
-router.post('/premios',       adminCtrl.createPremio);
-router.patch('/premios/:id',  adminCtrl.updatePremio);
-router.delete('/premios/:id', adminCtrl.deletePremio);
+router.get('/premios',                           adminCtrl.getPremios);
+router.post('/premios',                          adminCtrl.createPremio);
+router.patch('/premios/:id',                     adminCtrl.updatePremio);
+router.delete('/premios/:id',                    adminCtrl.deletePremio);
+router.post('/premios/:id/imagen', upload.single('imagen'), adminCtrl.subirImagenPremio);
 
 // Canjes
 router.get('/canjes',          adminCtrl.getCanjes);
