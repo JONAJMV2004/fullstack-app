@@ -6,11 +6,7 @@ const PremioModel = {
   async getAll() {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-<<<<<<< HEAD
-      .select('id, nombre, puntos_necesarios, disponibilidad, categoria')
-=======
-      .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
->>>>>>> b82beca75d3230e0ba960ca0b7e8fdc43f703bb9
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .gt('disponibilidad', 0)
       .order('puntos_necesarios', { ascending: true });
     if (error) throw error;
@@ -20,11 +16,7 @@ const PremioModel = {
   async getById(id) {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-<<<<<<< HEAD
-      .select('id, nombre, puntos_necesarios, disponibilidad, categoria')
-=======
-      .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
->>>>>>> b82beca75d3230e0ba960ca0b7e8fdc43f703bb9
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .eq('id', id)
       .single();
     if (error && error.code !== 'PGRST116') throw error;

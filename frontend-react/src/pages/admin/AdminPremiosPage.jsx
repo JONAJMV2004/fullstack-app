@@ -66,13 +66,9 @@ export default function AdminPremiosPage() {
 
   const [fNombre, setFNombre] = useState('')
   const [fPuntos, setFPuntos] = useState('')
-<<<<<<< HEAD
   const [fDisp, setFDisp] = useState('')
   const [fCategoria, setFCategoria] = useState('')
-=======
-  const [fDisp, setFDisp]   = useState('')
   const [newPremioId, setNewPremioId] = useState(null)
->>>>>>> b82beca75d3230e0ba960ca0b7e8fdc43f703bb9
 
   const [editTarget, setEditTarget]   = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -99,14 +95,9 @@ export default function AdminPremiosPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-<<<<<<< HEAD
-      setAlert({ type: 'success', msg: 'Premio creado.' })
-      setFNombre(''); setFPuntos(''); setFDisp(''); setFCategoria('')
-=======
       setAlert({ type: 'success', msg: 'Premio creado. Ahora puedes subir la imagen.' })
-      setFNombre(''); setFPuntos(''); setFDisp('')
+      setFNombre(''); setFPuntos(''); setFDisp(''); setFCategoria('')
       setNewPremioId(data.premio.id)
->>>>>>> b82beca75d3230e0ba960ca0b7e8fdc43f703bb9
       cargar()
     } catch (err) { setAlert({ type: 'error', msg: err.message }) }
   }
@@ -187,11 +178,7 @@ export default function AdminPremiosPage() {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-<<<<<<< HEAD
-              <tr><th>ID</th><th>Nombre</th><th>Puntos</th><th>Disponibilidad</th><th>Categoria</th><th>Acciones</th></tr>
-=======
-              <tr><th>Imagen</th><th>Nombre</th><th>Puntos</th><th>Disponibilidad</th><th>Acciones</th></tr>
->>>>>>> b82beca75d3230e0ba960ca0b7e8fdc43f703bb9
+              <tr><th>Imagen</th><th>Nombre</th><th>Puntos</th><th>Disponibilidad</th><th>Categoria</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {!premios.length ? (

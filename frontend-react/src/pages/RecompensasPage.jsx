@@ -113,7 +113,6 @@ export default function RecompensasPage() {
         </div>
 
         <div className="tab-panel">
-<<<<<<< HEAD
           {activeTab === 'historial' ? (
             <>
               <p className="tab-desc">Tus canjes realizados con sus códigos de uso.</p>
@@ -138,40 +137,6 @@ export default function RecompensasPage() {
                       <span className={`badge-canje ${c.estado}`}>{c.estado}</span>
                     </div>
                   ))}
-=======
-          <p className="tab-desc">Descubre increíbles y deliciosos productos que podrás canjear con tus puntos.</p>
-          <p className="puntos-disponibles">Puntos disponibles para canje: <strong>{balance}</strong></p>
-
-          <div className="premios-list">
-            {currentPremios.length === 0 ? (
-              <p className="empty-list">No hay premios disponibles.</p>
-            ) : (
-              currentPremios.map((p) => (
-                <div
-                  key={p.id}
-                  className={`premio-item ${balance < p.puntos_necesarios ? 'disabled' : ''}`}
-                  onClick={() => {
-                    if (balance >= p.puntos_necesarios) {
-                      setModal({ id: p.id, nombre: p.nombre, puntos: p.puntos_necesarios })
-                    }
-                  }}
-                >
-                  <div className="premio-icon">
-                    {p.imagen_url ? (
-                      <img src={p.imagen_url} alt={p.nombre} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 10 }} />
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="#2D6A50" strokeWidth="1.5" width="36" height="36">
-                        <path d="M18 8h1a4 4 0 0 1 0 8h-1" /><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
-                        <line x1="6" y1="1" x2="6" y2="4" /><line x1="10" y1="1" x2="10" y2="4" /><line x1="14" y1="1" x2="14" y2="4" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="premio-info">
-                    <p className="premio-nombre">{p.nombre}</p>
-                    <p className="premio-desc">{p.nombre}</p>
-                  </div>
-                  <div className="premio-pts">{p.puntos_necesarios}pt</div>
->>>>>>> b82beca75d3230e0ba960ca0b7e8fdc43f703bb9
                 </div>
               )}
             </>
