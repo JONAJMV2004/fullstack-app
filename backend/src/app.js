@@ -59,6 +59,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/lealtad', lealtadRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Legacy route aliases to keep compatibility with clients that call without /api.
+app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
+app.use('/lealtad', lealtadRoutes);
+app.use('/admin', adminRoutes);
+
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 
 app.use((req, res) => {
