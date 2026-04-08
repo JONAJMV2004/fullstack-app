@@ -3,7 +3,7 @@
 A full-stack authentication app with email/password and OAuth (Google + Facebook) login, built with:
 
 - **Backend:** Node.js, Express, Supabase (PostgreSQL), JWT, bcrypt
-- **Frontend:** Vanilla HTML, CSS, JavaScript (no frameworks)
+- **Frontend:** React + Vite
 
 ---
 
