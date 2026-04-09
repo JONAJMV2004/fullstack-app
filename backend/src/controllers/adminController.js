@@ -185,8 +185,13 @@ exports.updateEstancia = async (req, res) => {
       .single();
     if (error) throw error;
 
+    // Usar el valor del body; si no viene, usar el que ya tiene en BD
+    const puntosFinales = puntos_ganados !== undefined
+      ? parseInt(puntos_ganados)
+      : current?.puntos_ganados ?? 0;
+
     // When approving a pending estancia with points, create the points entry
-    if (estado === 'aprobado' && current && current.estado !== 'aprobado' && parseInt(puntos_ganados) > 0) {
+    if (estado === 'aprobado' && current?.estado !== 'aprobado' && puntosFinales > 0) {
       const checkIn = new Date(current.fecha_check_in).toLocaleDateString('es-MX');
       const checkOut = new Date(current.fecha_check_out).toLocaleDateString('es-MX');
       await supabaseAdmin
@@ -194,7 +199,7 @@ exports.updateEstancia = async (req, res) => {
         .insert([{
           usuario_id: current.usuario_id,
           descripcion: `Estancia ${checkIn} – ${checkOut}`,
-          puntos: parseInt(puntos_ganados),
+          puntos: puntosFinales,
         }]);
     }
 

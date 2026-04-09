@@ -165,7 +165,26 @@ exports.canjearPremio = async (req, res) => {
     // Generar código único
     const codigoUnico = crypto.randomBytes(6).toString('hex').toUpperCase();
 
+    // Operaciones secuenciales con rollback de best-effort para mantener consistencia
+    await PremioModel.decrementDisponibilidad(premio_id);
 
+    let canje;
+    try {
+      canje = await CanjeModel.create({
+        usuarioId,
+        premioId: premio_id,
+        puntosUtilizados: premio.puntos_necesarios,
+        codigoUnico,
+        ubicacion: ubicacion ? String(ubicacion).trim() : null,
+      });
+    } catch (canjeErr) {
+      // Revertir disponibilidad si el canje no se pudo registrar
+      await PremioModel.incrementDisponibilidad(premio_id).catch(() => {});
+      throw canjeErr;
+    }
+
+    try {
+      await PuntosModel.addEntry({
         usuarioId,
         descripcion: `Canje: ${premio.nombre}`,
         puntos: -premio.puntos_necesarios,
