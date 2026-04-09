@@ -7,23 +7,61 @@ const lealtadRoutes = require('./routes/lealtad');
 const adminRoutes  = require('./routes/admin');
 
 const app = express();
-const allowedOrigins = (process.env.FRONTEND_URL || '')
+const fallbackOrigins = process.env.NODE_ENV === 'production'
+  ? []
+  : [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+    ];
+
+const configuredOrigins = (process.env.FRONTEND_URL || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const allowedOriginPatterns = [...new Set([...configuredOrigins, ...fallbackOrigins])]
+  .map((originPattern) => originPattern.replace(/\/$/, ''));
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isOriginAllowed(origin) {
+  const normalizedOrigin = (origin || '').replace(/\/$/, '');
+
+  if (!normalizedOrigin) return true;
+
+  if (allowedOriginPatterns.length === 0) {
+    return process.env.NODE_ENV !== 'production';
+  }
+
+  return allowedOriginPatterns.some((pattern) => {
+    if (!pattern.includes('*')) {
+      return pattern === normalizedOrigin;
+    }
+
+    const wildcardRegex = new RegExp(`^${escapeRegex(pattern).replace(/\\\*/g, '.*')}$`);
+    return wildcardRegex.test(normalizedOrigin);
+  });
+}
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
-app.use(cors({
+const corsOptions = {
   origin(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       return callback(null, true);
     }
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
+
+    console.warn(`CORS blocked for origin: ${origin}`);
+    return callback(null, false);
   },
   credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
+
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

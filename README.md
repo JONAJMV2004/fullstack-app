@@ -182,6 +182,7 @@ En el servicio **backend**:
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `FRONTEND_URL` = URL del frontend en Render (ej. `https://fullstack-app-frontend.onrender.com`)
+    - Puedes usar varios dominios separados por comas o comodines, por ejemplo: `https://fullstack-app-frontend-*.onrender.com,https://fullstack-app-frontend.onrender.com`
 - `OAUTH_REDIRECT_URL` = `https://<tu-frontend>.onrender.com/oauth-callback`
 
 En el servicio **frontend**:
