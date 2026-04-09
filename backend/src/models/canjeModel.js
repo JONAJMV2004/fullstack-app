@@ -61,6 +61,14 @@ const CanjeModel = {
     if (error) throw error;
     return count || 0;
   },
+
+  async deleteById(id) {
+    const { error } = await supabaseAdmin
+      .from(TABLE)
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
 };
 
 module.exports = CanjeModel;

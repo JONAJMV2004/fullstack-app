@@ -32,19 +32,19 @@ const UsuarioModel = {
   async findAuthById(id) {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select('id, email, password_hash, provider')
+      .select('id, email, telefono, password_hash, provider')
       .eq('id', id)
       .single();
     if (error && error.code !== 'PGRST116') throw error;
     return data;
   },
 
-  async create({ nombre, email, passwordHash, tipoUsuario = 'cliente' }) {
+  async create({ nombre, email, telefono, passwordHash, tipoUsuario = 'cliente' }) {
     const normalizedEmail = normalizeEmail(email);
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .insert([{ nombre, email: normalizedEmail, password_hash: passwordHash, tipo_usuario: tipoUsuario, provider: 'local' }])
-      .select('id, nombre, email, tipo_usuario, provider, fecha_registro')
+      .insert([{ nombre, email: normalizedEmail, telefono, password_hash: passwordHash, tipo_usuario: tipoUsuario, provider: 'local' }])
+      .select('id, nombre, email, telefono, tipo_usuario, provider, fecha_registro')
       .single();
     if (error) throw error;
     return data;

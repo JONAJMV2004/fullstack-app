@@ -1,6 +1,35 @@
 const { supabaseAdmin } = require('../config/supabase');
 const bcrypt = require('bcryptjs');
 
+const STORAGE_BUCKET_PREMIOS = process.env.SUPABASE_STORAGE_BUCKET_PREMIOS || 'premios';
+const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+async function ensurePremiosBucket() {
+  const { data: bucket, error } = await supabaseAdmin.storage.getBucket(STORAGE_BUCKET_PREMIOS);
+
+  if (!error && bucket) return;
+
+  const { error: createError } = await supabaseAdmin.storage.createBucket(STORAGE_BUCKET_PREMIOS, {
+    public: true,
+    fileSizeLimit: 5 * 1024 * 1024,
+    allowedMimeTypes: ALLOWED_IMAGE_MIME_TYPES,
+  });
+
+  if (createError && !String(createError.message || '').toLowerCase().includes('already exists')) {
+    throw createError;
+  }
+}
+
+function extractStoragePath(publicUrl) {
+  if (!publicUrl) return null;
+
+  const marker = `/object/public/${STORAGE_BUCKET_PREMIOS}/`;
+  const markerIndex = publicUrl.indexOf(marker);
+  if (markerIndex === -1) return null;
+
+  return publicUrl.slice(markerIndex + marker.length);
+}
+
 // ── Usuarios ──────────────────────────────────────────────────────────────────
 
 exports.getUsuarios = async (req, res) => {
@@ -182,7 +211,7 @@ exports.getPremios = async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('premios')
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .order('id', { ascending: true });
     if (error) throw error;
     return res.json({ premios: data || [] });
@@ -198,11 +227,19 @@ exports.createPremio = async (req, res) => {
     if (!nombre || puntos_necesarios === undefined)
       return res.status(400).json({ error: 'nombre y puntos_necesarios son requeridos.' });
 
+    const premioPayload = {
+      nombre: String(nombre).trim(),
+      puntos_necesarios: parseInt(puntos_necesarios, 10),
+      disponibilidad: parseInt(disponibilidad, 10) || 0,
+      categoria: String(categoria || 'general').trim() || 'general',
+    };
+
     const { data, error } = await supabaseAdmin
       .from('premios')
-      .insert([{ nombre, puntos_necesarios: parseInt(puntos_necesarios), disponibilidad: parseInt(disponibilidad) || 0 }])
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .insert([premioPayload])
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .single();
+
     if (error) throw error;
     return res.status(201).json({ message: 'Premio creado.', premio: data });
   } catch (err) {
@@ -225,7 +262,7 @@ exports.updatePremio = async (req, res) => {
       .from('premios')
       .update(updates)
       .eq('id', id)
-      .select('id, nombre, puntos_necesarios, disponibilidad')
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .single();
     if (error) throw error;
     return res.json({ message: 'Premio actualizado.', premio: data });
@@ -240,25 +277,41 @@ exports.subirImagenPremio = async (req, res) => {
     const { id } = req.params;
     if (!req.file) return res.status(400).json({ error: 'No se recibió ninguna imagen.' });
 
-    const ext      = req.file.originalname.split('.').pop().toLowerCase();
-    const allowed  = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-    if (!allowed.includes(ext)) return res.status(400).json({ error: 'Formato no permitido. Usa JPG, PNG o WebP.' });
+    if (!ALLOWED_IMAGE_MIME_TYPES.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Formato no permitido. Usa JPG, PNG, GIF o WebP.' });
+    }
 
-    const path = `premio-${id}-${Date.now()}.${ext}`;
+    const { data: premioActual, error: premioError } = await supabaseAdmin
+      .from('premios')
+      .select('id, imagen_url')
+      .eq('id', id)
+      .single();
+    if (premioError) throw premioError;
+    if (!premioActual) return res.status(404).json({ error: 'Premio no encontrado.' });
+
+    await ensurePremiosBucket();
+
+    const ext = (req.file.originalname.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${id}/premio-${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabaseAdmin.storage
-      .from('premios')
+      .from(STORAGE_BUCKET_PREMIOS)
       .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
     if (uploadError) throw uploadError;
 
-    const { data: urlData } = supabaseAdmin.storage.from('premios').getPublicUrl(path);
+    const previousPath = extractStoragePath(premioActual.imagen_url);
+    if (previousPath) {
+      await supabaseAdmin.storage.from(STORAGE_BUCKET_PREMIOS).remove([previousPath]);
+    }
+
+    const { data: urlData } = supabaseAdmin.storage.from(STORAGE_BUCKET_PREMIOS).getPublicUrl(path);
     const imagen_url = urlData.publicUrl;
 
     const { data, error } = await supabaseAdmin
       .from('premios')
       .update({ imagen_url })
       .eq('id', id)
-      .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
+      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .single();
     if (error) throw error;
 
@@ -272,8 +325,21 @@ exports.subirImagenPremio = async (req, res) => {
 exports.deletePremio = async (req, res) => {
   try {
     const { id } = req.params;
+    const { data: premioActual, error: fetchError } = await supabaseAdmin
+      .from('premios')
+      .select('imagen_url')
+      .eq('id', id)
+      .single();
+    if (fetchError) throw fetchError;
+
     const { error } = await supabaseAdmin.from('premios').delete().eq('id', id);
     if (error) throw error;
+
+    const storagePath = extractStoragePath(premioActual?.imagen_url);
+    if (storagePath) {
+      await supabaseAdmin.storage.from(STORAGE_BUCKET_PREMIOS).remove([storagePath]);
+    }
+
     return res.json({ message: 'Premio eliminado.' });
   } catch (err) {
     console.error('Admin deletePremio:', err);

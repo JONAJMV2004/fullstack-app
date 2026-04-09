@@ -246,7 +246,7 @@ Frontend disponible en: `http://localhost:5173`
 | POST | `/canjes/validar` | Validar canje (admin) |
 | GET | `/reportes` | Obtener reportes generales |
 
----
+
 
 ## 🔐 Flujo de Autenticación
 
@@ -267,7 +267,4 @@ Frontend disponible en: `http://localhost:5173`
 
 ## 👑 Roles de Usuario
 
-| Rol | Acceso |
-|-----|--------|
-| `user` | Rutas protegidas estándar (home, recompensas, tarjeta, etc.) |
-| `admin` | Todo lo anterior + rutas `/admin/*` con panel de administración |
+

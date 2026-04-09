@@ -1,57 +1,119 @@
--- ─────────────────────────────────────────────────────────────────────────────
--- Run this in Supabase Dashboard → SQL Editor
--- ─────────────────────────────────────────────────────────────────────────────
+﻿-- =============================================================================
+-- Cielito Home — Esquema de referencia
+-- Refleja la base de datos real en producción (Supabase / PostgreSQL)
+-- Última actualización: 2026-04-09
+-- Ejecutar en: Supabase Dashboard → SQL Editor
+-- =============================================================================
 
--- Enable UUID generation
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- -----------------------------------------------------------------------------
+-- EXTENSIONES
+-- -----------------------------------------------------------------------------
+create extension if not exists "uuid-ossp";
 
--- ─── Users table ─────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS public.users (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name         TEXT NOT NULL,
-  email        TEXT NOT NULL UNIQUE,
-  password_hash TEXT,                        -- NULL for OAuth users
-  provider     TEXT NOT NULL DEFAULT 'local', -- 'local' | 'google' | 'facebook'
-  avatar_url   TEXT,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- -----------------------------------------------------------------------------
+-- TABLA: usuarios
+-- -----------------------------------------------------------------------------
+create table if not exists public.usuarios (
+  id               uuid primary key default uuid_generate_v4(),
+  nombre           text not null,
+  email            text not null unique,
+  telefono         text,
+  password_hash    text,                        -- null para cuentas OAuth
+  tipo_usuario     text not null default 'cliente' check (tipo_usuario in ('cliente', 'admin')),
+  provider         text not null default 'local' check (provider in ('local', 'google', 'facebook')),
+  avatar_url       text,
+  supabase_auth_id uuid,
+  fecha_registro   timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
 );
 
--- Index for fast email lookups
-CREATE INDEX IF NOT EXISTS idx_users_email ON public.users (email);
+create index if not exists idx_usuarios_email on public.usuarios (email);
 
--- ─── Auto-update updated_at ───────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- -----------------------------------------------------------------------------
+-- TABLA: estancias
+-- -----------------------------------------------------------------------------
+create table if not exists public.estancias (
+  id              bigserial primary key,
+  usuario_id      uuid not null references public.usuarios (id) on delete cascade,
+  fecha_check_in  date not null,
+  fecha_check_out date not null,
+  puntos_ganados  integer not null default 0,
+  estado          text not null default 'pendiente' check (estado in ('pendiente', 'confirmada', 'rechazada')),
+  ubicacion       text,
+  created_at      timestamptz not null default now(),
+  constraint chk_estancia_fechas check (fecha_check_out > fecha_check_in)
+);
 
-DROP TRIGGER IF EXISTS trg_users_updated_at ON public.users;
-CREATE TRIGGER trg_users_updated_at
-  BEFORE UPDATE ON public.users
-  FOR EACH ROW EXECUTE FUNCTION public.set_upmira te voy a pasardated_at();
+create index if not exists idx_estancias_usuario on public.estancias (usuario_id);
 
--- ─── Row Level Security ───────────────────────────────────────────────────────
--- We use the service role key on the backend (bypasses RLS),
--- so RLS here is a safety net for direct client access.
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+-- -----------------------------------------------------------------------------
+-- TABLA: puntos  (libro mayor — saldo actual = SUM(puntos) por usuario)
+-- -----------------------------------------------------------------------------
+create table if not exists public.puntos (
+  id          bigserial primary key,
+  usuario_id  uuid not null references public.usuarios (id) on delete cascade,
+  descripcion text not null,
+  puntos      integer not null,               -- positivo = ganados, negativo = canjeados
+  fecha       timestamptz not null default now()
+);
 
--- Only the service role (backend) can SELECT all rows
--- Users cannot read each other's data via the anon/authenticated Supabase client
-CREATE POLICY "Service role full access"
-  ON public.users
-  USING (true)
-  WITH CHECK (true);
+create index if not exists idx_puntos_usuario on public.puntos (usuario_id);
 
--- ─── Estancias table ──────────────────────────────────────────────────────────
--- If the constraint already exists with old values, run:
---   ALTER TABLE estancias DROP CONSTRAINT estancias_estado_check;
---   ALTER TABLE estancias ADD CONSTRAINT estancias_estado_check
---     CHECK (estado IN ('pendiente', 'aprobado', 'rechazado'));
+-- -----------------------------------------------------------------------------
+-- TABLA: premios
+-- -----------------------------------------------------------------------------
+create table if not exists public.premios (
+  id                bigserial primary key,
+  nombre            text not null,
+  puntos_necesarios integer not null check (puntos_necesarios > 0),
+  disponibilidad    integer not null default 0 check (disponibilidad >= 0),
+  categoria         text,
+  imagen_url        text,
+  created_at        timestamptz not null default now()
+);
 
--- ─── Sample data (optional, for local testing) ────────────────────────────────
--- INSERT INTO public.users (name, email, password_hash, provider)
--- VALUES ('Test User', 'test@example.com', '<bcrypt_hash>', 'local');
+-- -----------------------------------------------------------------------------
+-- TABLA: canjes
+-- -----------------------------------------------------------------------------
+create table if not exists public.canjes (
+  id                bigserial primary key,
+  usuario_id        uuid not null references public.usuarios (id) on delete cascade,
+  premio_id         bigint not null references public.premios (id),
+  puntos_utilizados integer not null,
+  codigo_unico      text not null unique,
+  estado            text not null default 'pendiente' check (estado in ('pendiente', 'redimido', 'cancelado')),
+  fecha             timestamptz not null default now()
+);
+
+create index if not exists idx_canjes_usuario on public.canjes (usuario_id);
+create index if not exists idx_canjes_codigo  on public.canjes (codigo_unico);
+
+-- -----------------------------------------------------------------------------
+-- TABLA: ubicaciones  (catálogo de propiedades disponibles)
+-- -----------------------------------------------------------------------------
+create table if not exists public.ubicaciones (
+  id         bigserial primary key,
+  nombre     text not null,
+  activa     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists idx_ubicaciones_nombre_lower
+  on public.ubicaciones (lower(nombre));
+
+-- -----------------------------------------------------------------------------
+-- TRIGGER: updated_at automático en usuarios
+-- -----------------------------------------------------------------------------
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_usuarios_updated_at on public.usuarios;
+create trigger trg_usuarios_updated_at
+  before update on public.usuarios
+  for each row execute procedure public.set_updated_at();
+

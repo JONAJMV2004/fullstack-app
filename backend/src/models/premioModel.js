@@ -35,6 +35,19 @@ const PremioModel = {
     if (error) throw error;
     return data;
   },
+
+  async incrementDisponibilidad(id) {
+    const premio = await PremioModel.getById(id);
+    if (!premio) throw new Error('Premio no encontrado.');
+    const { data, error } = await supabaseAdmin
+      .from(TABLE)
+      .update({ disponibilidad: premio.disponibilidad + 1 })
+      .eq('id', id)
+      .select('id, disponibilidad')
+      .single();
+    if (error) throw error;
+    return data;
+  },
 };
 
 module.exports = PremioModel;
