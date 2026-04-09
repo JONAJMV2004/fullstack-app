@@ -37,16 +37,21 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  const authHeaders = useCallback(() => {
+    const headers = { 'Content-Type': 'application/json' }
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+    return headers
+  }, [token])
+
   const value = {
     token,
     user,
     isLoggedIn: !!token,
     saveSession,
     clearSession,
-    authHeaders: () => ({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    }),
+    authHeaders,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

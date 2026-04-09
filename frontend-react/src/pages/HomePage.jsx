@@ -30,7 +30,7 @@ function getNivel(balance) {
 }
 
 export default function HomePage() {
-  const { authHeaders } = useAuth()
+  const { token, authHeaders, clearSession } = useAuth()
   const [userData, setUserData] = useState(null)
   const [balance, setBalance] = useState(0)
 
@@ -44,29 +44,76 @@ export default function HomePage() {
   const [estancias, setEstancias] = useState([])
   const [alert, setAlert] = useState(null)
 
+  async function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  async function fetchJsonWithRetry(url, options = {}, retries = 2) {
+    let lastError = null
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(url, options)
+        const data = await res.json().catch(() => ({}))
+
+        if (res.status === 401 || res.status === 403) {
+          const authError = new Error('Sesion expirada')
+          authError.code = 'AUTH'
+          throw authError
+        }
+
+        if (!res.ok) {
+          const shouldRetry = [502, 503, 504].includes(res.status) && attempt < retries
+          if (shouldRetry) {
+            await wait((attempt + 1) * 600)
+            continue
+          }
+
+          throw new Error(data.error || `HTTP ${res.status}`)
+        }
+
+        return data
+      } catch (error) {
+        lastError = error
+        const isNetworkError = error instanceof TypeError
+        const canRetry = attempt < retries && isNetworkError
+        if (canRetry) {
+          await wait((attempt + 1) * 600)
+          continue
+        }
+        throw error
+      }
+    }
+
+    throw lastError
+  }
+
   useEffect(() => {
     async function cargarHome() {
+      if (!token) return
+
       try {
-        const [meRes, puntosRes, estRes, ubicacionesRes] = await Promise.all([
-          fetch(`${API_BASE}/auth/me`, { headers: authHeaders() }),
-          fetch(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
-          fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
-          fetch(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
+        const meData = await fetchJsonWithRetry(`${API_BASE}/auth/me`, { headers: authHeaders() })
+        const [puntosData, estData, ubicacionesData] = await Promise.all([
+          fetchJsonWithRetry(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
+          fetchJsonWithRetry(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
+          fetchJsonWithRetry(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
         ])
-        const meData = await meRes.json()
-        const puntosData = await puntosRes.json()
-        const estData = await estRes.json()
-        const ubicacionesData = await ubicacionesRes.json()
+
         setUserData(meData.user)
         setBalance(puntosData.balance || 0)
         setEstancias(estData.estancias || [])
         setUbicaciones(ubicacionesData.ubicaciones || [])
       } catch (err) {
+        if (err?.code === 'AUTH') {
+          clearSession()
+          return
+        }
         console.error('Error cargando home:', err)
       }
     }
     cargarHome()
-  }, [])
+  }, [token, authHeaders, clearSession])
 
   async function handleEstanciaSubmit(e) {
     e.preventDefault()
@@ -89,18 +136,19 @@ export default function HomePage() {
       setAlert({ message: '¡Estancia registrada! Pendiente de aprobación por el administrador.', type: 'success' })
       setCheckIn(''); setCheckOut(''); setUbicacion('')
       // Reload data
-      const [puntosRes, estRes, ubicacionesRes] = await Promise.all([
-        fetch(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
-        fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
-        fetch(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
+      const [puntosData, estData, ubicacionesData] = await Promise.all([
+        fetchJsonWithRetry(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
+        fetchJsonWithRetry(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
+        fetchJsonWithRetry(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
       ])
-      const puntosData = await puntosRes.json()
-      const estData = await estRes.json()
-      const ubicacionesData = await ubicacionesRes.json()
       setBalance(puntosData.balance || 0)
       setEstancias(estData.estancias || [])
       setUbicaciones(ubicacionesData.ubicaciones || [])
-    } catch {
+    } catch (err) {
+      if (err?.code === 'AUTH') {
+        clearSession()
+        return
+      }
       setAlert({ message: 'Error de conexión.', type: 'error' })
     } finally {
       setEstanciaLoading(false)
