@@ -23,6 +23,15 @@ exports.registrarEstancia = async (req, res) => {
     if (new Date(fecha_check_out) <= new Date(fecha_check_in))
       return res.status(400).json({ error: 'La fecha de check-out debe ser posterior al check-in.' });
 
+    const conflictos = await EstanciaModel.checkConflicto({
+      ubicacion: ubicacionNormalizada,
+      fechaCheckIn: fecha_check_in,
+      fechaCheckOut: fecha_check_out,
+    });
+
+    if (conflictos.length > 0)
+      return res.status(409).json({ error: 'La ubicación ya está ocupada en esas fechas. Por favor elige otras fechas.' });
+
     const estancia = await EstanciaModel.create({
       usuarioId,
       fechaCheckIn: fecha_check_in,
@@ -107,7 +116,7 @@ exports.getPremios = async (req, res) => {
 exports.canjearPremio = async (req, res) => {
   try {
     const usuarioId = req.user.id;
-    const { premio_id } = req.body;
+    const { premio_id, ubicacion } = req.body;
 
     if (!premio_id)
       return res.status(400).json({ error: 'premio_id es requerido.' });
@@ -130,7 +139,7 @@ exports.canjearPremio = async (req, res) => {
 
     // Registrar canje, descontar puntos y decrementar disponibilidad
     const [canje] = await Promise.all([
-      CanjeModel.create({ usuarioId, premioId: premio_id, puntosUtilizados: premio.puntos_necesarios, codigoUnico }),
+      CanjeModel.create({ usuarioId, premioId: premio_id, puntosUtilizados: premio.puntos_necesarios, codigoUnico, ubicacion: ubicacion ? String(ubicacion).trim() : null }),
       PuntosModel.addEntry({
         usuarioId,
         descripcion: `Canje: ${premio.nombre}`,

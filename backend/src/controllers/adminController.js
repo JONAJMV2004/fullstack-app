@@ -297,6 +297,29 @@ exports.getCanjes = async (req, res) => {
   }
 };
 
+exports.updateCanje = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    const estadosValidos = ['aprobado', 'rechazado', 'pendiente'];
+    if (!estadosValidos.includes(estado))
+      return res.status(400).json({ error: 'Estado inválido.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('canjes')
+      .update({ estado })
+      .eq('id', id)
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
+      .single();
+    if (error) throw error;
+
+    return res.json({ message: 'Canje actualizado.', canje: data });
+  } catch (err) {
+    console.error('Admin updateCanje:', err);
+    return res.status(500).json({ error: 'Error al actualizar canje.' });
+  }
+};
+
 exports.validarCanje = async (req, res) => {
   try {
     const { codigo } = req.body;
@@ -370,6 +393,52 @@ exports.getReportes = async (req, res) => {
 };
 
 // ── Ubicaciones ──────────────────────────────────────────────────────────────────
+
+exports.getOcupacion = async (req, res) => {
+  try {
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const [{ data: ubicaciones, error: errUb }, { data: estancias, error: errEst }] = await Promise.all([
+      supabaseAdmin.from('ubicaciones').select('id, nombre, activa').order('nombre', { ascending: true }),
+      supabaseAdmin
+        .from('estancias')
+        .select('id, ubicacion, estado, fecha_check_in, fecha_check_out, usuario_id, usuarios(nombre, email)')
+        .neq('estado', 'rechazado')
+        .gte('fecha_check_out', hoy)
+        .order('fecha_check_in', { ascending: true }),
+    ]);
+
+    if (errUb) throw errUb;
+    if (errEst) throw errEst;
+
+    const resultado = (ubicaciones || []).map(ub => {
+      const estanciasUb = (estancias || []).filter(
+        e => (e.ubicacion || '').toLowerCase() === ub.nombre.toLowerCase()
+      );
+
+      const activa = estanciasUb.find(
+        e => e.fecha_check_in <= hoy && e.fecha_check_out >= hoy && e.estado === 'aprobado'
+      );
+      const proximaAprobada = estanciasUb.find(e => e.fecha_check_in > hoy && e.estado === 'aprobado');
+      const pendiente = estanciasUb.find(e => e.estado === 'pendiente');
+
+      let estadoUb = 'disponible';
+      if (activa) estadoUb = 'ocupada';
+      else if (proximaAprobada || pendiente) estadoUb = 'reservada';
+
+      return {
+        ...ub,
+        estado_ocupacion: estadoUb,
+        estancias: estanciasUb,
+      };
+    });
+
+    return res.json({ ubicaciones: resultado });
+  } catch (err) {
+    console.error('Admin getOcupacion:', err);
+    return res.status(500).json({ error: 'Error al obtener ocupación.' });
+  }
+};
 
 exports.getUbicaciones = async (req, res) => {
   try {
