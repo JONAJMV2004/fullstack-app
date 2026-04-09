@@ -9,6 +9,9 @@ const SALT_ROUNDS = 12;
  */
 exports.getAllUsers = async (req, res) => {
   try {
+    if (req.user.tipo_usuario !== 'admin') {
+      return res.status(403).json({ error: 'Acceso restringido.' });
+    }
     const users = await UserModel.findAll();
     return res.status(200).json({ users });
   } catch (err) {
@@ -55,14 +58,22 @@ exports.updateUser = async (req, res) => {
       return res.status(403).json({ error: 'Access denied.' });
     }
 
-    const { name, password } = req.body;
+    const { nombre, telefono, password } = req.body;
     const updates = {};
 
-    if (name !== undefined) {
-      if (!name.trim()) {
-        return res.status(400).json({ error: 'Name cannot be empty.' });
+    if (nombre !== undefined) {
+      if (!nombre.trim()) {
+        return res.status(400).json({ error: 'El nombre no puede estar vacío.' });
       }
-      updates.name = name.trim();
+      updates.nombre = nombre.trim();
+    }
+
+    if (telefono !== undefined) {
+      const tel = String(telefono).trim();
+      if (tel.length > 0 && tel.length < 8) {
+        return res.status(400).json({ error: 'El teléfono debe tener al menos 8 caracteres.' });
+      }
+      if (tel.length >= 8) updates.telefono = tel;
     }
 
     if (password !== undefined) {

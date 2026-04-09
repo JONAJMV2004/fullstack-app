@@ -181,6 +181,7 @@ En el servicio **backend**:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_STORAGE_BUCKET_PREMIOS` = `premios`
 - `FRONTEND_URL` = URL del frontend en Render (ej. `https://fullstack-app-frontend.onrender.com`)
     - Puedes usar varios dominios separados por comas o comodines, por ejemplo: `https://fullstack-app-frontend-*.onrender.com,https://fullstack-app-frontend.onrender.com`
 - `OAUTH_REDIRECT_URL` = `https://<tu-frontend>.onrender.com/oauth-callback`
@@ -197,5 +198,15 @@ En Supabase Authentication Providers (Google/Facebook), usa:
 
 - Backend health: `https://<tu-backend>.onrender.com/api/health`
 - Frontend: `https://<tu-frontend>.onrender.com`
+
+### 5) Habilitar almacenamiento de imágenes en Supabase
+
+Para subir fotos de premios a Supabase Storage, ejecuta la migración `supabase/migrations/20260409_enable_premios_storage.sql` en el SQL Editor de Supabase.
+
+Esto crea o actualiza:
+- El bucket público `premios`
+- El límite de 5 MB por imagen
+- Los formatos permitidos `jpg`, `png`, `webp`, `gif`
+- La columna `imagen_url` en la tabla `premios` si aún no existe
 
 Si ves error CORS, revisa que `FRONTEND_URL` coincida exactamente con el dominio del sitio frontend (sin slash final).

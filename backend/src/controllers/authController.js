@@ -17,28 +17,44 @@ function signToken(usuario) {
 // POST /api/auth/register
 exports.register = async (req, res) => {
   try {
-    const { nombre, name, email, password } = req.body;
+    const { nombre, name, email, password, telefono } = req.body;
     const nombreFinal = nombre || name;
     const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedPhone = String(telefono || '').trim();
 
-    if (!nombreFinal || !normalizedEmail || !password)
-      return res.status(400).json({ error: 'Nombre, email y contraseña son requeridos.' });
+    if (!nombreFinal || !normalizedEmail || !password || !normalizedPhone)
+      return res.status(400).json({ error: 'Nombre, email, celular y contraseña son requeridos.' });
 
     if (password.length < 6)
       return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+
+    if (normalizedPhone.length < 8)
+      return res.status(400).json({ error: 'El celular debe tener al menos 8 caracteres.' });
 
     const existing = await UsuarioModel.findByEmail(normalizedEmail);
     if (existing)
       return res.status(409).json({ error: 'Ya existe una cuenta con este email.' });
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const usuario = await UsuarioModel.create({ nombre: nombreFinal, email: normalizedEmail, passwordHash });
+    const usuario = await UsuarioModel.create({
+      nombre: nombreFinal,
+      email: normalizedEmail,
+      telefono: normalizedPhone,
+      passwordHash,
+    });
     const token = signToken(usuario);
 
     return res.status(201).json({
       message: 'Registro exitoso.',
       token,
-      user: { id: usuario.id, nombre: usuario.nombre, name: usuario.nombre, email: usuario.email, tipo_usuario: usuario.tipo_usuario },
+      user: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        name: usuario.nombre,
+        email: usuario.email,
+        telefono: usuario.telefono,
+        tipo_usuario: usuario.tipo_usuario,
+      },
     });
   } catch (err) {
     console.error('Register error:', err);
@@ -68,7 +84,14 @@ exports.login = async (req, res) => {
     return res.status(200).json({
       message: 'Inicio de sesión exitoso.',
       token,
-      user: { id: usuario.id, nombre: usuario.nombre, name: usuario.nombre, email: usuario.email, tipo_usuario: usuario.tipo_usuario },
+      user: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        name: usuario.nombre,
+        email: usuario.email,
+        telefono: usuario.telefono,
+        tipo_usuario: usuario.tipo_usuario,
+      },
     });
   } catch (err) {
     console.error('Login error:', err);

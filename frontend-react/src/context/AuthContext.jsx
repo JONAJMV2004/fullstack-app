@@ -13,8 +13,25 @@ const USER_KEY = 'app_user'
 
 const AuthContext = createContext(null)
 
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return typeof payload.exp === 'number' && payload.exp < Math.floor(Date.now() / 1000)
+  } catch {
+    return true
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY))
+  const [token, setToken] = useState(() => {
+    const stored = localStorage.getItem(TOKEN_KEY)
+    if (stored && isTokenExpired(stored)) {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(USER_KEY)
+      return null
+    }
+    return stored
+  })
   const [user, setUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(USER_KEY))

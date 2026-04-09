@@ -13,6 +13,9 @@ router.get('/ubicaciones', ctrl.getUbicaciones);
 // Puntos (balance + historial + resumen)
 router.get('/puntos', ctrl.getPuntos);
 
+// Carnet (lightweight — solo user + balance para tarjeta)
+router.get('/carnet', ctrl.getCarnet);
+
 // Premios
 router.get('/premios', ctrl.getPremios);
 

@@ -7,6 +7,7 @@ import { GoogleIcon, FacebookIcon, AppleIcon, handleOAuthLogin } from '../compon
 
 export default function RegisterPage() {
   const [nombre, setNombre] = useState('')
+  const [telefono, setTelefono] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -22,8 +23,12 @@ export default function RegisterPage() {
     e.preventDefault()
     setAlert(null)
 
-    if (!nombre.trim() || !email.trim() || !password) {
+    if (!nombre.trim() || !telefono.trim() || !email.trim() || !password) {
       setAlert({ message: 'Completa todos los campos.', type: 'error' })
+      return
+    }
+    if (telefono.trim().length < 8) {
+      setAlert({ message: 'Ingresa un celular valido.', type: 'error' })
       return
     }
     if (password.length < 6) {
@@ -44,7 +49,12 @@ export default function RegisterPage() {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: nombre.trim(), email: email.trim(), password }),
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          telefono: telefono.trim(),
+          email: email.trim(),
+          password,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -82,6 +92,9 @@ export default function RegisterPage() {
         <form className="ch-form" onSubmit={handleSubmit} noValidate>
           <div className="ch-input-group">
             <input type="text" placeholder="Nombre Completo" autoComplete="name" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
+          </div>
+          <div className="ch-input-group">
+            <input type="tel" placeholder="Celular" autoComplete="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} required />
           </div>
           <div className="ch-input-group">
             <input type="email" placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />

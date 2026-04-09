@@ -6,6 +6,7 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -20,6 +21,8 @@ services:
       - key: OAUTH_REDIRECT_URL
         sync: false
       - key: FRONTEND_URL
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET_PREMIOS
         sync: false
 
   - type: web

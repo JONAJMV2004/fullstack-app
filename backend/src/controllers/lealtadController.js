@@ -88,6 +88,34 @@ exports.getPuntos = async (req, res) => {
   }
 };
 
+// GET /api/lealtad/carnet  (lightweight endpoint para tarjeta — solo user + balance)
+exports.getCarnet = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const UsuarioModel = require('../models/usuarioModel');
+
+    // Fetch user + balance en paralelo (sin historial completo)
+    const [usuario, balance] = await Promise.all([
+      UsuarioModel.findById(usuarioId),
+      PuntosModel.getBalance(usuarioId),
+    ]);
+
+    if (!usuario)
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+    // Agregar Cache-Control para reducir tráfico (5 minutos)
+    res.set('Cache-Control', 'private, max-age=300');
+
+    return res.status(200).json({
+      user: { ...usuario, name: usuario.nombre },
+      balance,
+    });
+  } catch (err) {
+    console.error('getCarnet error:', err);
+    return res.status(500).json({ error: 'Error al obtener carnet.' });
+  }
+};
+
 // ── PREMIOS ──────────────────────────────────────────────────────────────────
 
 // GET /api/lealtad/premios
@@ -128,16 +156,30 @@ exports.canjearPremio = async (req, res) => {
     // Generar código único
     const codigoUnico = crypto.randomBytes(6).toString('hex').toUpperCase();
 
-    // Registrar canje, descontar puntos y decrementar disponibilidad
-    const [canje] = await Promise.all([
-      CanjeModel.create({ usuarioId, premioId: premio_id, puntosUtilizados: premio.puntos_necesarios, codigoUnico }),
-      PuntosModel.addEntry({
+    // Operaciones secuenciales con rollback de best-effort para mantener consistencia
+    await PremioModel.decrementDisponibilidad(premio_id);
+
+    let canje;
+    try {
+      canje = await CanjeModel.create({ usuarioId, premioId: premio_id, puntosUtilizados: premio.puntos_necesarios, codigoUnico });
+    } catch (canjeErr) {
+      // Revertir disponibilidad si el canje no se pudo registrar
+      await PremioModel.incrementDisponibilidad(premio_id).catch(() => {});
+      throw canjeErr;
+    }
+
+    try {
+      await PuntosModel.addEntry({
         usuarioId,
         descripcion: `Canje: ${premio.nombre}`,
         puntos: -premio.puntos_necesarios,
-      }),
-      PremioModel.decrementDisponibilidad(premio_id),
-    ]);
+      });
+    } catch (puntosErr) {
+      // Revertir disponibilidad y eliminar el canje si el descuento falló
+      await PremioModel.incrementDisponibilidad(premio_id).catch(() => {});
+      await CanjeModel.deleteById(canje.id).catch(() => {});
+      throw puntosErr;
+    }
 
     return res.status(201).json({
       message: 'Canje realizado con éxito.',
