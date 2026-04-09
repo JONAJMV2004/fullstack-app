@@ -37,7 +37,8 @@ export default function LoginPage() {
       }
       saveSession(data.token, data.user)
       setAlert({ message: 'Bienvenido de vuelta.', type: 'success' })
-      setTimeout(() => navigate('/home'), 800)
+      const destino = data.user.tipo_usuario === 'admin' ? '/admin/reportes' : '/home'
+      setTimeout(() => navigate(destino), 800)
     } catch {
       setAlert({ message: 'Error de conexión. Verifica que el servidor esté activo.', type: 'error' })
     } finally {

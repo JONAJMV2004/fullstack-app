@@ -2,9 +2,23 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Cielito Home</title>
-    <link rel="icon" href="./public/LOGO_CH.png" type="image/x-icon">
+
+    <!-- PWA / Mobile -->
+    <meta name="theme-color" content="#2D6A50" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Cielito Home" />
+    <meta name="application-name" content="Cielito Home" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Icons -->
+    <link rel="icon" href="/LOGO_CH.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/LOGO_CH.png" />
   </head>
   <body>
     <div id="root"></div>

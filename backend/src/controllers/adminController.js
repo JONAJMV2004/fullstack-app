@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../config/supabase');
+const bcrypt = require('bcryptjs');
 
 // ── Usuarios ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,57 @@ exports.deleteUsuario = async (req, res) => {
   } catch (err) {
     console.error('Admin deleteUsuario:', err);
     return res.status(500).json({ error: 'Error al eliminar usuario.' });
+  }
+};
+
+exports.updateUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipo_usuario, nombre } = req.body;
+    const updates = {};
+    if (tipo_usuario !== undefined) {
+      const roles = ['cliente', 'admin', 'staff'];
+      if (!roles.includes(tipo_usuario))
+        return res.status(400).json({ error: 'Rol inválido.' });
+      updates.tipo_usuario = tipo_usuario;
+    }
+    if (nombre !== undefined) updates.nombre = nombre.trim();
+    if (!Object.keys(updates).length)
+      return res.status(400).json({ error: 'Nada que actualizar.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('usuarios')
+      .update(updates)
+      .eq('id', id)
+      .select('id, nombre, email, tipo_usuario, provider, fecha_registro')
+      .single();
+    if (error) throw error;
+    return res.json({ message: 'Usuario actualizado.', usuario: data });
+  } catch (err) {
+    console.error('Admin updateUsuario:', err);
+    return res.status(500).json({ error: 'Error al actualizar usuario.' });
+  }
+};
+
+exports.cambiarPasswordUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nueva_password } = req.body;
+    if (!nueva_password || nueva_password.length < 6)
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+
+    const hash = await bcrypt.hash(nueva_password, 10);
+
+    const { error } = await supabaseAdmin
+      .from('usuarios')
+      .update({ password_hash: hash })
+      .eq('id', id);
+    if (error) throw error;
+
+    return res.json({ message: 'Contraseña actualizada correctamente.' });
+  } catch (err) {
+    console.error('Admin cambiarPasswordUsuario:', err);
+    return res.status(500).json({ error: 'Error al cambiar contraseña.' });
   }
 };
 
@@ -142,7 +194,7 @@ exports.getPremios = async (req, res) => {
 
 exports.createPremio = async (req, res) => {
   try {
-    const { nombre, puntos_necesarios, disponibilidad } = req.body;
+    const { nombre, puntos_necesarios, disponibilidad, categoria } = req.body;
     if (!nombre || puntos_necesarios === undefined)
       return res.status(400).json({ error: 'nombre y puntos_necesarios son requeridos.' });
 
@@ -162,11 +214,12 @@ exports.createPremio = async (req, res) => {
 exports.updatePremio = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, puntos_necesarios, disponibilidad } = req.body;
+    const { nombre, puntos_necesarios, disponibilidad, categoria } = req.body;
     const updates = {};
     if (nombre !== undefined) updates.nombre = nombre;
     if (puntos_necesarios !== undefined) updates.puntos_necesarios = parseInt(puntos_necesarios);
     if (disponibilidad !== undefined) updates.disponibilidad = parseInt(disponibilidad);
+    if (categoria !== undefined) updates.categoria = categoria;
 
     const { data, error } = await supabaseAdmin
       .from('premios')
@@ -179,6 +232,40 @@ exports.updatePremio = async (req, res) => {
   } catch (err) {
     console.error('Admin updatePremio:', err);
     return res.status(500).json({ error: 'Error al actualizar premio.' });
+  }
+};
+
+exports.subirImagenPremio = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'No se recibió ninguna imagen.' });
+
+    const ext      = req.file.originalname.split('.').pop().toLowerCase();
+    const allowed  = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    if (!allowed.includes(ext)) return res.status(400).json({ error: 'Formato no permitido. Usa JPG, PNG o WebP.' });
+
+    const path = `premio-${id}-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('premios')
+      .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabaseAdmin.storage.from('premios').getPublicUrl(path);
+    const imagen_url = urlData.publicUrl;
+
+    const { data, error } = await supabaseAdmin
+      .from('premios')
+      .update({ imagen_url })
+      .eq('id', id)
+      .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
+      .single();
+    if (error) throw error;
+
+    return res.json({ message: 'Imagen subida correctamente.', premio: data, imagen_url });
+  } catch (err) {
+    console.error('Admin subirImagenPremio:', err);
+    return res.status(500).json({ error: 'Error al subir la imagen.' });
   }
 };
 
@@ -200,7 +287,7 @@ exports.getCanjes = async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('canjes')
-      .select('*, usuarios(nombre, email), premios(nombre)')
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
       .order('fecha', { ascending: false });
     if (error) throw error;
     return res.json({ canjes: data });
@@ -217,7 +304,7 @@ exports.validarCanje = async (req, res) => {
 
     const { data: canje, error } = await supabaseAdmin
       .from('canjes')
-      .select('*, usuarios(nombre, email), premios(nombre)')
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
       .eq('codigo_unico', codigo.trim().toUpperCase())
       .single();
 
@@ -235,7 +322,7 @@ exports.validarCanje = async (req, res) => {
       .from('canjes')
       .update({ estado: 'aprobado' })
       .eq('id', canje.id)
-      .select('*, usuarios(nombre, email), premios(nombre)')
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
       .single();
     if (updateErr) throw updateErr;
 
@@ -279,5 +366,76 @@ exports.getReportes = async (req, res) => {
   } catch (err) {
     console.error('Admin getReportes:', err);
     return res.status(500).json({ error: 'Error al obtener reportes.' });
+  }
+};
+
+// ── Ubicaciones ──────────────────────────────────────────────────────────────────
+
+exports.getUbicaciones = async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('ubicaciones')
+      .select('id, nombre, activa')
+      .order('nombre', { ascending: true });
+    if (error) throw error;
+    return res.json({ ubicaciones: data || [] });
+  } catch (err) {
+    console.error('Admin getUbicaciones:', err);
+    return res.status(500).json({ error: 'Error al obtener ubicaciones.' });
+  }
+};
+
+exports.createUbicacion = async (req, res) => {
+  try {
+    const nombre = String(req.body.nombre || '').trim();
+    if (!nombre)
+      return res.status(400).json({ error: 'nombre es requerido.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('ubicaciones')
+      .insert([{ nombre }])
+      .select('id, nombre, activa')
+      .single();
+    if (error) throw error;
+    return res.status(201).json({ message: 'Ubicación creada.', ubicacion: data });
+  } catch (err) {
+    console.error('Admin createUbicacion:', err);
+    return res.status(500).json({ error: 'Error al crear ubicación.' });
+  }
+};
+
+exports.updateUbicacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = {};
+    if (req.body.nombre !== undefined) updates.nombre = String(req.body.nombre).trim();
+    if (req.body.activa !== undefined) updates.activa = Boolean(req.body.activa);
+
+    if (!Object.keys(updates).length)
+      return res.status(400).json({ error: 'Nada que actualizar.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('ubicaciones')
+      .update(updates)
+      .eq('id', id)
+      .select('id, nombre, activa')
+      .single();
+    if (error) throw error;
+    return res.json({ message: 'Ubicación actualizada.', ubicacion: data });
+  } catch (err) {
+    console.error('Admin updateUbicacion:', err);
+    return res.status(500).json({ error: 'Error al actualizar ubicación.' });
+  }
+};
+
+exports.deleteUbicacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabaseAdmin.from('ubicaciones').delete().eq('id', id);
+    if (error) throw error;
+    return res.json({ message: 'Ubicación eliminada.' });
+  } catch (err) {
+    console.error('Admin deleteUbicacion:', err);
+    return res.status(500).json({ error: 'Error al eliminar ubicación.' });
   }
 };

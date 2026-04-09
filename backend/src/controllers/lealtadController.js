@@ -10,10 +10,15 @@ const CanjeModel = require('../models/canjeModel');
 exports.registrarEstancia = async (req, res) => {
   try {
     const usuarioId = req.user.id;
-    const { fecha_check_in, fecha_check_out } = req.body;
+    const { fecha_check_in, fecha_check_out, ubicacion } = req.body;
 
-    if (!fecha_check_in || !fecha_check_out)
-      return res.status(400).json({ error: 'check_in y check_out son requeridos.' });
+    if (!fecha_check_in || !fecha_check_out || !String(ubicacion || '').trim())
+      return res.status(400).json({ error: 'check_in, check_out y ubicacion son requeridos.' });
+
+    const ubicacionNormalizada = String(ubicacion).trim();
+    const ubicacionExiste = await EstanciaModel.existeUbicacion(ubicacionNormalizada);
+    if (!ubicacionExiste)
+      return res.status(400).json({ error: 'La ubicación seleccionada no es válida.' });
 
     if (new Date(fecha_check_out) <= new Date(fecha_check_in))
       return res.status(400).json({ error: 'La fecha de check-out debe ser posterior al check-in.' });
@@ -24,12 +29,24 @@ exports.registrarEstancia = async (req, res) => {
       fechaCheckOut: fecha_check_out,
       puntosGanados: 0,
       estado: 'pendiente',
+      ubicacion: ubicacionNormalizada,
     });
 
     return res.status(201).json({ message: 'Estancia registrada. Pendiente de aprobación.', estancia });
   } catch (err) {
     console.error('registrarEstancia error:', err);
     return res.status(500).json({ error: 'Error al registrar estancia.' });
+  }
+};
+
+// GET /api/lealtad/ubicaciones
+exports.getUbicaciones = async (req, res) => {
+  try {
+    const ubicaciones = await EstanciaModel.getUbicacionesDisponibles();
+    return res.status(200).json({ ubicaciones });
+  } catch (err) {
+    console.error('getUbicaciones error:', err);
+    return res.status(500).json({ error: 'Error al obtener ubicaciones.' });
   }
 };
 
@@ -67,7 +84,7 @@ exports.getPuntos = async (req, res) => {
     });
   } catch (err) {
     console.error('getPuntos error:', err);
-    return res.status(500).json({ error: 'Error al obtener puntos.' });
+    return res.status(500).json({ error: err.message || 'Error al obtener puntos.' });
   }
 };
 

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(cmd //c \"dir C:\\\\Users\\\\JONATHAN\\\\fullstack-app\\\\frontend-react\\\\src\")",
+      "Bash(npm install:*)"
+    ]
+  }
+}

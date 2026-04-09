@@ -1,6 +1,13 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 
-const API_BASE = '/api'
+function normalizeApiBase(value) {
+  const trimmed = (value || '/api').trim().replace(/\/$/, '')
+  if (trimmed === '') return '/api'
+  if (trimmed === '/api' || trimmed.endsWith('/api')) return trimmed
+  return `${trimmed}/api`
+}
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL)
 const TOKEN_KEY = 'app_token'
 const USER_KEY = 'app_user'
 
@@ -30,16 +37,21 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  const authHeaders = useCallback(() => {
+    const headers = { 'Content-Type': 'application/json' }
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+    return headers
+  }, [token])
+
   const value = {
     token,
     user,
     isLoggedIn: !!token,
     saveSession,
     clearSession,
-    authHeaders: () => ({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    }),
+    authHeaders,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

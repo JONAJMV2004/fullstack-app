@@ -9,9 +9,10 @@ export default function OAuthCallbackPage() {
 
   useEffect(() => {
     const run = async () => {
-      const hash = window.location.hash.substring(1)
-      const params = Object.fromEntries(new URLSearchParams(hash))
-      const { access_token, refresh_token } = params
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const queryParams = new URLSearchParams(window.location.search)
+      const access_token = hashParams.get('access_token') || queryParams.get('access_token')
+      const refresh_token = hashParams.get('refresh_token') || queryParams.get('refresh_token')
 
       if (!access_token) {
         setStatus('Authentication failed. No token received.')
@@ -35,8 +36,8 @@ export default function OAuthCallbackPage() {
         }
 
         saveSession(data.token, data.user)
-        setStatus('Success! Redirecting to dashboard…')
-        setTimeout(() => navigate('/dashboard'), 500)
+        setStatus('Success! Redirecting to home…')
+        setTimeout(() => navigate('/home'), 500)
       } catch {
         setStatus('Network error. Please try again.')
         setTimeout(() => navigate('/'), 2500)

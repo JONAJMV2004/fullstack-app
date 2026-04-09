@@ -8,6 +8,7 @@ router.use(verifyToken);
 // Estancias
 router.post('/estancias', ctrl.registrarEstancia);
 router.get('/estancias', ctrl.getEstancias);
+router.get('/ubicaciones', ctrl.getUbicaciones);
 
 // Puntos (balance + historial + resumen)
 router.get('/puntos', ctrl.getPuntos);
