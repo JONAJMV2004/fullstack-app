@@ -86,7 +86,8 @@ exports.updateEstancia = async (req, res) => {
     const { estado, puntos_ganados } = req.body;
     const updates = {};
     if (estado !== undefined) updates.estado = estado;
-    if (puntos_ganados !== undefined) updates.puntos_ganados = parseInt(puntos_ganados);
+    // No se pueden asignar puntos a estancias rechazadas
+    if (puntos_ganados !== undefined) updates.puntos_ganados = estado === 'rechazado' ? 0 : parseInt(puntos_ganados);
 
     // Fetch current estancia to check previous state
     const { data: current } = await supabaseAdmin

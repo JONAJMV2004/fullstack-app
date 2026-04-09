@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { QRCodeSVG } from 'qrcode.react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import AppTopbar, { AppLogoCircle } from '../components/AppTopbar'
 import BottomNav from '../components/BottomNav'
@@ -23,7 +22,6 @@ export default function TarjetaPage() {
   const { authHeaders } = useAuth()
   const [userData, setUserData] = useState(null)
   const [balance, setBalance] = useState(0)
-  const [showQR, setShowQR] = useState(false)
 
   useEffect(() => {
     async function cargarDatos() {
@@ -111,26 +109,6 @@ export default function TarjetaPage() {
             </div>
           )}
         </div>
-
-        {/* ── QR ── */}
-        <button className="tc-qr-toggle" onClick={() => setShowQR(v => !v)}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          {showQR ? 'Ocultar código QR' : 'Mostrar código QR'}
-        </button>
-
-        {showQR && (
-          <div className="tc-qr-container">
-            <QRCodeSVG
-              value={`CIELITO-${numTarjeta}`}
-              size={140}
-              fgColor="#2D6A50"
-              bgColor="#ffffff"
-              level="M"
-              style={{ borderRadius: 8 }}
-            />
-            <p className="tc-qr-hint">Presenta este código en caja para acumular puntos</p>
-          </div>
-        )}
 
         {/* ── Acciones ── */}
         <div className="tc-actions">

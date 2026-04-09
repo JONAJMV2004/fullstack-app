@@ -1,159 +1,273 @@
-# Full-Stack App — Node.js + Express + Supabase
+# 🏨 Cielito Home — Sistema de Lealtad Full-Stack
 
-A full-stack authentication app with email/password and OAuth (Google + Facebook) login, built with:
-
-- **Backend:** Node.js, Express, Supabase (PostgreSQL), JWT, bcrypt
-- **Frontend:** Vanilla HTML, CSS, JavaScript (no frameworks)
+Aplicación web full-stack para el programa de lealtad del hotel **Cielito Home**. Permite a los huéspedes acumular puntos por estancias, canjear premios y ver su historial, con un panel de administración completo para gestión interna.
 
 ---
 
-## Project Structure
+## 🛠️ Stack Tecnológico
+
+| Capa | Tecnología |
+|------|-----------|
+| **Frontend** | React 18, Vite, React Router DOM v6 |
+| **Backend** | Node.js, Express |
+| **Base de datos** | Supabase (PostgreSQL) |
+| **Autenticación** | JWT, bcryptjs, OAuth (Google + Facebook) vía Supabase |
+| **QR** | qrcode.react |
+
+---
+
+## 📁 Estructura del Proyecto
 
 ```
 fullstack-app/
 ├── backend/
 │   ├── src/
 │   │   ├── config/
-│   │   │   └── supabase.js          # Supabase client setup (admin + public)
+│   │   │   └── supabase.js              # Cliente Supabase (admin + público)
 │   │   ├── controllers/
-│   │   │   ├── authController.js    # Register, login, OAuth handlers
-│   │   │   └── userController.js    # CRUD for user profiles
+│   │   │   ├── authController.js        # Register, login, OAuth
+│   │   │   ├── userController.js        # CRUD de perfiles de usuario
+│   │   │   ├── lealtadController.js     # Estancias, puntos, premios, canjes
+│   │   │   └── adminController.js       # Panel de administración
 │   │   ├── middleware/
-│   │   │   └── auth.js              # JWT verification middleware
+│   │   │   └── auth.js                  # Verificación JWT
 │   │   ├── models/
-│   │   │   └── userModel.js         # Supabase DB queries
+│   │   │   └── userModel.js             # Queries a Supabase DB
 │   │   ├── routes/
-│   │   │   ├── auth.js              # /api/auth/* routes
-│   │   │   └── users.js             # /api/users/* routes
-│   │   └── app.js                   # Express app setup
-│   ├── server.js                    # Entry point
-│   ├── .env.example                 # Environment variable template
+│   │   │   ├── auth.js                  # /api/auth/*
+│   │   │   ├── users.js                 # /api/users/*
+│   │   │   ├── lealtad.js               # /api/lealtad/*
+│   │   │   └── admin.js                 # /api/admin/*
+│   │   └── app.js                       # Configuración de Express
+│   ├── server.js                        # Punto de entrada
+│   ├── .env.example                     # Plantilla de variables de entorno
 │   └── package.json
-├── frontend/
-│   ├── index.html                   # Login / Register page
-│   ├── dashboard.html               # Protected user dashboard
-│   ├── oauth-callback.html          # OAuth redirect handler
-│   ├── css/
-│   │   └── styles.css
-│   └── js/
-│       ├── auth.js                  # Shared auth utilities (token storage)
-│       ├── app.js                   # Login/register page logic
-│       ├── oauth-callback.js        # Exchanges OAuth tokens for app JWT
-│       └── dashboard.js             # Dashboard page logic
+├── frontend-react/
+│   ├── src/
+│   │   ├── context/
+│   │   │   └── AuthContext.jsx          # Estado de sesión global (JWT + user)
+│   │   ├── components/
+│   │   │   ├── AdminLayout.jsx          # Layout del panel admin (sidebar)
+│   │   │   ├── Alert.jsx                # Componente de alertas
+│   │   │   ├── AppTopbar.jsx            # Barra superior de la app
+│   │   │   ├── BottomNav.jsx            # Navegación inferior (mobile)
+│   │   │   ├── CielitoLogo.jsx          # Logo de la marca
+│   │   │   ├── SideMenu.jsx             # Menú lateral de ajustes
+│   │   │   └── SocialAuth.jsx           # Botones OAuth (Google / Facebook)
+│   │   ├── pages/
+│   │   │   ├── SplashPage.jsx           # Pantalla de bienvenida
+│   │   │   ├── LoginPage.jsx            # Inicio de sesión
+│   │   │   ├── RegisterPage.jsx         # Registro de cuenta
+│   │   │   ├── OAuthCallbackPage.jsx    # Callback OAuth
+│   │   │   ├── HomePage.jsx             # Inicio: resumen del usuario
+│   │   │   ├── RecompensasPage.jsx      # Catálogo de premios
+│   │   │   ├── TarjetaPage.jsx          # Tarjeta de lealtad + QR
+│   │   │   ├── DashboardPage.jsx        # Dashboard de puntos e historial
+│   │   │   ├── AjustesPage.jsx          # Ajustes: idioma, tema, sesión
+│   │   │   ├── EditarPerfilPage.jsx     # Edición de nombre y datos
+│   │   │   ├── CambiarPasswordPage.jsx  # Cambio de contraseña
+│   │   │   ├── NotificacionesPage.jsx   # Notificaciones del usuario
+│   │   │   ├── AcercaPage.jsx           # Información de la app
+│   │   │   ├── CondicionesPage.jsx      # Términos y condiciones
+│   │   │   ├── SoportePage.jsx          # Soporte y contacto
+│   │   │   └── admin/
+│   │   │       ├── AdminReportesPage.jsx    # Reportes generales
+│   │   │       ├── AdminUsuariosPage.jsx    # Gestión de usuarios
+│   │   │       ├── AdminPuntosPage.jsx      # Ajuste de puntos
+│   │   │       ├── AdminEstanciasPage.jsx   # Gestión de estancias
+│   │   │       ├── AdminPremiosPage.jsx     # CRUD de premios
+│   │   │       └── AdminCanjesPage.jsx      # Validación de canjes
+│   │   ├── styles/
+│   │   │   ├── cielito.css              # Estilos globales de la app
+│   │   │   ├── dashboard.css            # Estilos del dashboard
+│   │   │   └── admin.css               # Estilos del panel admin
+│   │   ├── App.jsx                      # Rutas principales (pública/protegida/admin)
+│   │   └── main.jsx                     # Entry point de React
+│   ├── index.html
+│   ├── vite.config.js
+│   └── package.json
 └── supabase/
-    └── schema.sql                   # PostgreSQL table definition
+    └── schema.sql                       # Definición de tablas PostgreSQL
 ```
 
 ---
 
-## Setup Instructions
+## ⚙️ Instalación y Configuración
 
-### 1. Create a Supabase Project
+### 1. Clonar el repositorio
 
-1. Go to [supabase.com](https://supabase.com) and create a new project.
-2. Open **SQL Editor** and run the contents of `supabase/schema.sql`.
-3. Copy your credentials from **Project Settings → API**:
+```bash
+git clone https://github.com/JONAJMV2004/fullstack-app.git
+cd fullstack-app
+```
+
+### 2. Crear un proyecto en Supabase
+
+1. Ve a [supabase.com](https://supabase.com) y crea un proyecto nuevo.
+2. Abre el **Editor SQL** y ejecuta el contenido de `supabase/schema.sql`.
+3. Copia tus credenciales desde **Configuración del proyecto → API**:
    - Project URL
-   - `anon` public key
-   - `service_role` secret key
+   - Clave pública `anon`
+   - Clave secreta `service_role`
 
-### 2. Enable Google & Facebook OAuth in Supabase
+### 3. Activar OAuth en Supabase (Google / Facebook)
 
-1. Go to **Authentication → Providers** in your Supabase dashboard.
-2. Enable **Google** — enter your Google OAuth Client ID and Secret.
-3. Enable **Facebook** — enter your Facebook App ID and Secret.
-4. Set the **Redirect URL** in each provider to: `http://localhost:3000/oauth-callback.html`
+1. Ve a **Authentication → Providers** en tu dashboard de Supabase.
+2. Activa **Google** → ingresa tu Client ID y Client Secret.
+3. Activa **Facebook** → ingresa tu App ID y App Secret.
+4. Establece la **URL de redirección** en cada proveedor: `http://localhost:5000/api/auth/oauth/callback`
 
-> Get Google credentials from [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials.
-> Get Facebook credentials from [Facebook Developers](https://developers.facebook.com/) → Your App → Settings → Basic.
+> Obtén credenciales de Google en [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials.  
+> Obtén credenciales de Facebook en [Facebook Developers](https://developers.facebook.com/) → Tu App → Settings → Basic.
 
-### 3. Configure the Backend
+### 4. Configurar el Backend
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Edita `.env` con tus valores:
 
 ```env
 PORT=5000
-JWT_SECRET=your_random_64_char_secret
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-OAUTH_REDIRECT_URL=http://localhost:3000/oauth-callback.html
-FRONTEND_URL=http://localhost:3000
+JWT_SECRET=tu_secreto_aleatorio_de_64_caracteres
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_ANON_KEY=tu_clave_anon
+SUPABASE_SERVICE_ROLE_KEY=tu_clave_service_role
+OAUTH_REDIRECT_URL=http://localhost:5000/api/auth/oauth/callback
+FRONTEND_URL=http://localhost:5173
 ```
 
-Generate a JWT secret:
+Generar un JWT secret seguro:
 ```bash
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 
-### 4. Install Dependencies & Run Backend
-
+Instalar dependencias e iniciar:
 ```bash
-cd backend
 npm install
-npm run dev      # development (nodemon)
-# or
-npm start        # production
+npm run dev      # desarrollo (nodemon)
+# o
+npm start        # producción
 ```
 
-Backend runs at: `http://localhost:5000`
+Backend disponible en: `http://localhost:5000`
 
-### 5. Serve the Frontend
-
-Serve the `frontend/` directory with any static file server, e.g.:
+### 5. Configurar el Frontend
 
 ```bash
-# Using Node.js http-server
-npx http-server frontend -p 3000 -c-1
-
-# Using Python
-cd frontend && python -m http.server 3000
+cd frontend-react
+npm install
+npm run dev
 ```
 
-Frontend runs at: `http://localhost:3000`
+Frontend disponible en: `http://localhost:5173`
 
 ---
 
-## API Reference
+## 🌐 Rutas del Frontend
 
-### Auth Routes (`/api/auth`)
+| Ruta | Acceso | Descripción |
+|------|--------|-------------|
+| `/` | Público | Splash / bienvenida |
+| `/login` | Público | Inicio de sesión |
+| `/register` | Público | Registro |
+| `/oauth-callback` | Público | Callback OAuth |
+| `/home` | 🔒 Protegido | Inicio del usuario |
+| `/recompensas` | 🔒 Protegido | Catálogo de premios |
+| `/tarjeta` | 🔒 Protegido | Tarjeta de lealtad + QR |
+| `/dashboard` | 🔒 Protegido | Dashboard de puntos |
+| `/ajustes` | 🔒 Protegido | Ajustes de cuenta |
+| `/editar-perfil` | 🔒 Protegido | Editar perfil |
+| `/cambiar-password` | 🔒 Protegido | Cambiar contraseña |
+| `/notificaciones` | 🔒 Protegido | Notificaciones |
+| `/acerca` | 🔒 Protegido | Acerca de la app |
+| `/condiciones` | 🔒 Protegido | Términos y condiciones |
+| `/soporte` | 🔒 Protegido | Soporte |
+| `/admin` | 👑 Admin | Reportes generales |
+| `/admin/usuarios` | 👑 Admin | Gestión de usuarios |
+| `/admin/puntos` | 👑 Admin | Ajuste de puntos |
+| `/admin/estancias` | 👑 Admin | Gestión de estancias |
+| `/admin/premios` | 👑 Admin | CRUD de premios |
+| `/admin/canjes` | 👑 Admin | Validación de canjes |
 
-| Method | Endpoint | Auth | Description |
+---
+
+## 📡 API Reference
+
+### Auth (`/api/auth`)
+
+| Método | Endpoint | Auth | Descripción |
 |--------|----------|------|-------------|
-| POST | `/register` | No | Register with name, email, password |
-| POST | `/login` | No | Login with email, password |
-| GET | `/oauth/google` | No | Get Google OAuth redirect URL |
-| GET | `/oauth/facebook` | No | Get Facebook OAuth redirect URL |
-| POST | `/oauth/callback` | No | Exchange Supabase tokens for app JWT |
-| GET | `/me` | JWT | Get current user profile |
+| POST | `/register` | No | Registro con nombre, email, contraseña |
+| POST | `/login` | No | Login con email y contraseña |
+| GET | `/oauth/google` | No | URL de redirección de Google OAuth |
+| GET | `/oauth/facebook` | No | URL de redirección de Facebook OAuth |
+| POST | `/oauth/callback` | No | Canjear tokens de Supabase por JWT de app |
+| GET | `/me` | JWT | Obtener perfil del usuario actual |
 
-### User Routes (`/api/users`) — all require JWT
+### Usuarios (`/api/users`) — requieren JWT
 
-| Method | Endpoint | Description |
+| Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| GET | `/` | List all users |
-| GET | `/:id` | Get user by ID (own only) |
-| PUT | `/:id` | Update name / password (own only) |
-| DELETE | `/:id` | Delete account (own only) |
+| GET | `/` | Listar todos los usuarios |
+| GET | `/:id` | Obtener usuario por ID (solo propio) |
+| PUT | `/:id` | Actualizar nombre / contraseña (solo propio) |
+| DELETE | `/:id` | Eliminar cuenta (solo propio) |
+
+### Lealtad (`/api/lealtad`) — requieren JWT
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/estancias` | Registrar una estancia |
+| GET | `/estancias` | Ver estancias del usuario |
+| GET | `/puntos` | Consultar saldo y resumen de puntos |
+| GET | `/premios` | Listar premios disponibles |
+| POST | `/canjes` | Canjear un premio |
+| GET | `/canjes` | Ver historial de canjes |
+| POST | `/canjes/validar` | Validar código QR de canje |
+
+### Admin (`/api/admin`) — requieren JWT + rol `admin`
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/usuarios` | Listar todos los usuarios |
+| DELETE | `/usuarios/:id` | Eliminar usuario |
+| GET | `/puntos` | Ver puntos de todos los usuarios |
+| POST | `/puntos` | Ajustar puntos manualmente |
+| GET | `/estancias` | Ver todas las estancias |
+| PATCH | `/estancias/:id` | Actualizar estado de estancia |
+| GET | `/premios` | Listar premios |
+| POST | `/premios` | Crear premio |
+| PATCH | `/premios/:id` | Actualizar premio |
+| DELETE | `/premios/:id` | Eliminar premio |
+| GET | `/canjes` | Ver todos los canjes |
+| POST | `/canjes/validar` | Validar canje (admin) |
+| GET | `/reportes` | Obtener reportes generales |
 
 ---
 
-## Authentication Flow
+## 🔐 Flujo de Autenticación
 
-### Email/Password
-1. User submits form → frontend POSTs to `/api/auth/register` or `/api/auth/login`
-2. Backend validates, hashes password (bcrypt), stores in Supabase, returns JWT
-3. Frontend stores JWT in `localStorage`, redirects to dashboard
+### Email / Contraseña
+1. El usuario llena el formulario → el frontend hace POST a `/api/auth/register` o `/api/auth/login`
+2. El backend valida, hashea la contraseña (bcrypt), guarda en Supabase y devuelve un JWT
+3. El frontend guarda el JWT en `localStorage` y redirige a `/home`
 
 ### OAuth (Google / Facebook)
-1. User clicks button → frontend GETs `/api/auth/oauth/google` or `/facebook`
-2. Backend returns Supabase OAuth URL → frontend redirects the browser
-3. User authenticates with provider → Supabase redirects to `oauth-callback.html#access_token=...`
-4. `oauth-callback.js` extracts tokens, POSTs to `/api/auth/oauth/callback`
-5. Backend verifies Supabase session, upserts user in DB, returns app JWT
-6. Frontend stores JWT, redirects to dashboard
+1. El usuario hace clic en el botón → GET a `/api/auth/oauth/google` o `/facebook`
+2. El backend devuelve la URL de Supabase OAuth → el frontend redirige al navegador
+3. El usuario se autentica con el proveedor → Supabase redirige a `/oauth-callback`
+4. `OAuthCallbackPage` extrae los tokens y hace POST a `/api/auth/oauth/callback`
+5. El backend verifica la sesión de Supabase, crea/actualiza el usuario en DB y devuelve un JWT de app
+6. El frontend guarda el JWT y redirige a `/home`
+
+---
+
+## 👑 Roles de Usuario
+
+| Rol | Acceso |
+|-----|--------|
+| `user` | Rutas protegidas estándar (home, recompensas, tarjeta, etc.) |
+| `admin` | Todo lo anterior + rutas `/admin/*` con panel de administración |
