@@ -37,14 +37,16 @@ router.delete('/premios/:id',                    adminCtrl.deletePremio);
 router.post('/premios/:id/imagen', upload.single('imagen'), adminCtrl.subirImagenPremio);
 
 // Canjes
-router.get('/canjes',          adminCtrl.getCanjes);
-router.post('/canjes/validar', adminCtrl.validarCanje);
+router.get('/canjes',           adminCtrl.getCanjes);
+router.patch('/canjes/:id',     adminCtrl.updateCanje);
+router.post('/canjes/validar',  adminCtrl.validarCanje);
 
 // Reportes
 router.get('/reportes', adminCtrl.getReportes);
 
 // Ubicaciones
-router.get('/ubicaciones',        adminCtrl.getUbicaciones);
+router.get('/ubicaciones/ocupacion', adminCtrl.getOcupacion);
+router.get('/ubicaciones',           adminCtrl.getUbicaciones);
 router.post('/ubicaciones',       adminCtrl.createUbicacion);
 router.patch('/ubicaciones/:id',  adminCtrl.updateUbicacion);
 router.delete('/ubicaciones/:id', adminCtrl.deleteUbicacion);;

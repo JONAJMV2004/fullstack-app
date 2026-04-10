@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 
 const authRoutes   = require('./routes/auth');
 const userRoutes   = require('./routes/users');
@@ -63,6 +64,9 @@ app.use(cors(corsOptions));
 
 app.options('*', cors(corsOptions));
 
+// Gzip compression for all responses (reduces payload by ~70-80%)
+app.use(compression({ threshold: 1024 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -96,12 +100,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/lealtad', lealtadRoutes);
 app.use('/api/admin', adminRoutes);
-
-// Legacy route aliases to keep compatibility with clients that call without /api.
-app.use('/auth', authRoutes);
-app.use('/users', userRoutes);
-app.use('/lealtad', lealtadRoutes);
-app.use('/admin', adminRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 

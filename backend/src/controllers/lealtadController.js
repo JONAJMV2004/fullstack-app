@@ -23,6 +23,15 @@ exports.registrarEstancia = async (req, res) => {
     if (new Date(fecha_check_out) <= new Date(fecha_check_in))
       return res.status(400).json({ error: 'La fecha de check-out debe ser posterior al check-in.' });
 
+    const conflictos = await EstanciaModel.checkConflicto({
+      ubicacion: ubicacionNormalizada,
+      fechaCheckIn: fecha_check_in,
+      fechaCheckOut: fecha_check_out,
+    });
+
+    if (conflictos.length > 0)
+      return res.status(409).json({ error: 'La ubicación ya está ocupada en esas fechas. Por favor elige otras fechas.' });
+
     const estancia = await EstanciaModel.create({
       usuarioId,
       fechaCheckIn: fecha_check_in,
@@ -88,6 +97,34 @@ exports.getPuntos = async (req, res) => {
   }
 };
 
+// GET /api/lealtad/carnet  (lightweight endpoint para tarjeta — solo user + balance)
+exports.getCarnet = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const UsuarioModel = require('../models/usuarioModel');
+
+    // Fetch user + balance en paralelo (sin historial completo)
+    const [usuario, balance] = await Promise.all([
+      UsuarioModel.findById(usuarioId),
+      PuntosModel.getBalance(usuarioId),
+    ]);
+
+    if (!usuario)
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+    // Agregar Cache-Control para reducir tráfico (5 minutos)
+    res.set('Cache-Control', 'private, max-age=300');
+
+    return res.status(200).json({
+      user: { ...usuario, name: usuario.nombre },
+      balance,
+    });
+  } catch (err) {
+    console.error('getCarnet error:', err);
+    return res.status(500).json({ error: 'Error al obtener carnet.' });
+  }
+};
+
 // ── PREMIOS ──────────────────────────────────────────────────────────────────
 
 // GET /api/lealtad/premios
@@ -107,7 +144,7 @@ exports.getPremios = async (req, res) => {
 exports.canjearPremio = async (req, res) => {
   try {
     const usuarioId = req.user.id;
-    const { premio_id } = req.body;
+    const { premio_id, ubicacion } = req.body;
 
     if (!premio_id)
       return res.status(400).json({ error: 'premio_id es requerido.' });
@@ -128,16 +165,36 @@ exports.canjearPremio = async (req, res) => {
     // Generar código único
     const codigoUnico = crypto.randomBytes(6).toString('hex').toUpperCase();
 
-    // Registrar canje, descontar puntos y decrementar disponibilidad
-    const [canje] = await Promise.all([
-      CanjeModel.create({ usuarioId, premioId: premio_id, puntosUtilizados: premio.puntos_necesarios, codigoUnico }),
-      PuntosModel.addEntry({
+    // Operaciones secuenciales con rollback de best-effort para mantener consistencia
+    await PremioModel.decrementDisponibilidad(premio_id);
+
+    let canje;
+    try {
+      canje = await CanjeModel.create({
+        usuarioId,
+        premioId: premio_id,
+        puntosUtilizados: premio.puntos_necesarios,
+        codigoUnico,
+        ubicacion: ubicacion ? String(ubicacion).trim() : null,
+      });
+    } catch (canjeErr) {
+      // Revertir disponibilidad si el canje no se pudo registrar
+      await PremioModel.incrementDisponibilidad(premio_id).catch(() => {});
+      throw canjeErr;
+    }
+
+    try {
+      await PuntosModel.addEntry({
         usuarioId,
         descripcion: `Canje: ${premio.nombre}`,
         puntos: -premio.puntos_necesarios,
-      }),
-      PremioModel.decrementDisponibilidad(premio_id),
-    ]);
+      });
+    } catch (puntosErr) {
+      // Revertir disponibilidad y eliminar el canje si el descuento falló
+      await PremioModel.incrementDisponibilidad(premio_id).catch(() => {});
+      await CanjeModel.deleteById(canje.id).catch(() => {});
+      throw puntosErr;
+    }
 
     return res.status(201).json({
       message: 'Canje realizado con éxito.',

@@ -95,6 +95,23 @@ const EstanciaModel = {
     return (data || []).length > 0;
   },
 
+  async checkConflicto({ ubicacion, fechaCheckIn, fechaCheckOut, excluirId = null }) {
+    let query = supabaseAdmin
+      .from(TABLE)
+      .select('id, fecha_check_in, fecha_check_out, usuario_id')
+      .ilike('ubicacion', ubicacion)
+      .neq('estado', 'rechazado')
+      // Dos rangos se solapan si: check_in existente < check_out nuevo Y check_out existente > check_in nuevo
+      .lt('fecha_check_in', fechaCheckOut)
+      .gt('fecha_check_out', fechaCheckIn);
+
+    if (excluirId) query = query.neq('id', excluirId);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
   async getByUsuario(usuarioId) {
     const { data, error } = await supabaseAdmin
       .from(TABLE)

@@ -30,10 +30,11 @@ export default function AdminEstanciasPage() {
   async function handleEditSave() {
     if (!editTarget) return
     try {
+      const puntosAGuardar = editTarget.estado === 'rechazado' ? 0 : parseInt(editTarget.puntos_ganados) || 0
       const res = await fetch(`${API_BASE}/admin/estancias/${editTarget.id}`, {
         method: 'PATCH',
         headers: authHeaders(),
-        body: JSON.stringify({ estado: editTarget.estado, puntos_ganados: parseInt(editTarget.puntos_ganados) || 0 }),
+        body: JSON.stringify({ estado: editTarget.estado, puntos_ganados: puntosAGuardar }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -116,7 +117,18 @@ export default function AdminEstanciasPage() {
             </div>
             <div className="admin-form-group">
               <label>Puntos a asignar</label>
-              <input className="admin-input" type="number" min="0" placeholder="Ej. 150" value={editTarget.puntos_ganados} onChange={e => setEditTarget(prev => ({ ...prev, puntos_ganados: e.target.value }))} />
+              <input
+                className="admin-input"
+                type="number"
+                min="0"
+                placeholder="Ej. 150"
+                value={editTarget.estado === 'rechazado' ? 0 : editTarget.puntos_ganados}
+                disabled={editTarget.estado === 'rechazado'}
+                onChange={e => setEditTarget(prev => ({ ...prev, puntos_ganados: e.target.value }))}
+              />
+              {editTarget.estado === 'rechazado' && (
+                <small style={{ color: '#e53e3e' }}>No se pueden asignar puntos a una estancia rechazada.</small>
+              )}
             </div>
             <div className="admin-modal-actions">
               <button className="btn-admin secondary" onClick={() => setEditTarget(null)}>Cancelar</button>

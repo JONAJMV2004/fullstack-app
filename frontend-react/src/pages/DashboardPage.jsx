@@ -33,7 +33,7 @@ export default function DashboardPage() {
       if (res.status === 401 || res.status === 403) { clearSession(); return }
       if (!res.ok) throw new Error(data.error)
       setCurrentUser(data.user)
-      setEditName(data.user.name)
+      setEditName(data.user.nombre || data.user.name)
     } catch (err) {
       showAlert(`Failed to load profile: ${err.message}`)
     }
@@ -45,8 +45,8 @@ export default function DashboardPage() {
       const data = await res.json()
       if (res.ok) {
         setPuntosTotal(data.balance || 0)
-        setTotalEstancias(data.totalEstancias || 0)
-        setTotalCanjes(data.totalCanjes || 0)
+        setTotalEstancias(data.resumen?.total_estancias || 0)
+        setTotalCanjes(data.resumen?.total_canjes || 0)
       }
     } catch { /* silent */ }
   }
@@ -57,7 +57,7 @@ export default function DashboardPage() {
     if (!editName.trim()) { showAlert('Name cannot be empty.'); return }
 
     const body = {}
-    if (editName !== currentUser.name) body.name = editName
+    if (editName !== (currentUser.nombre || currentUser.name)) body.nombre = editName
     if (editPassword) body.password = editPassword
     if (Object.keys(body).length === 0) { showAlert('No changes to save.', 'success'); return }
     if (editPassword && editPassword.length < 6) { showAlert('Password must be at least 6 characters.'); return }
@@ -71,7 +71,7 @@ export default function DashboardPage() {
       })
       const data = await res.json()
       if (!res.ok) { showAlert(data.error || 'Failed to update profile.'); return }
-      saveSession(token, { ...user, name: data.user.name })
+      saveSession(token, { ...user, nombre: data.user.nombre || data.user.name, name: data.user.nombre || data.user.name })
       setCurrentUser(data.user)
       setEditPassword('')
       showAlert('Profile updated successfully.', 'success')

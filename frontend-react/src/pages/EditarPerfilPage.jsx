@@ -50,17 +50,20 @@ export default function EditarPerfilPage() {
 
     setLoading(true)
     try {
+      const body = { nombre: form.nombre.trim() }
+      if (form.telefono.trim()) body.telefono = form.telefono.trim()
+
       const res = await fetch(`${API_BASE}/users/${currentUser.id}`, {
         method: 'PUT',
         headers: authHeaders(),
-        body: JSON.stringify({ name: form.nombre.trim() }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) {
         setAlert({ message: data.error || 'Error al actualizar el perfil.', type: 'error' })
         return
       }
-      saveSession(token, { ...user, name: form.nombre.trim(), nombre: form.nombre.trim() })
+      saveSession(token, { ...user, nombre: form.nombre.trim(), name: form.nombre.trim(), telefono: form.telefono.trim() })
       setAlert({ message: 'Perfil actualizado correctamente.', type: 'success' })
     } catch {
       setAlert({ message: 'Error de conexión.', type: 'error' })
@@ -133,6 +136,21 @@ export default function EditarPerfilPage() {
                     value={form.nombre}
                     onChange={handleChange}
                     autoComplete="name"
+                  />
+                </div>
+              </div>
+
+              <div className="settings-input-group">
+                <label htmlFor="telefono">Celular</label>
+                <div className="settings-input-wrap">
+                  <input
+                    id="telefono"
+                    name="telefono"
+                    type="tel"
+                    placeholder="Tu número de celúlar"
+                    value={form.telefono}
+                    onChange={handleChange}
+                    autoComplete="tel"
                   />
                 </div>
               </div>

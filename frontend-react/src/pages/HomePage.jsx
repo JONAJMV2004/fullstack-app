@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { QRCodeSVG } from 'qrcode.react'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import AppTopbar, { AppLogoCircle } from '../components/AppTopbar'
 import BottomNav from '../components/BottomNav'
@@ -227,88 +226,162 @@ export default function HomePage() {
         <Link to="/recompensas" className="btn-ch-primary home-canjear-btn">Canjear Puntos</Link>
 
         {/* ── Registrar Estancia ── */}
-        <div className="home-estancia-section">
-          <button
-            className="home-estancia-toggle"
-            onClick={() => setShowEstancia(!showEstancia)}
-          >
-            <div className="home-estancia-toggle-left">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span>Registrar Estancia</span>
+        <div className="booking-section">
+
+          {/* Header toggle */}
+          <button className="booking-toggle" onClick={() => setShowEstancia(!showEstancia)}>
+            <div className="booking-toggle-left">
+              <div className="booking-toggle-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <div>
+                <div className="booking-toggle-title">Registrar Estancia</div>
+                <div className="booking-toggle-sub">Acumula puntos por tu estadía</div>
+              </div>
             </div>
-            <svg
-              width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ transition: 'transform .2s', transform: showEstancia ? 'rotate(180deg)' : 'rotate(0)' }}
-            >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              style={{ transition: 'transform .25s', transform: showEstancia ? 'rotate(180deg)' : 'rotate(0)', flexShrink: 0, color: '#2D6A50' }}>
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </button>
 
           {showEstancia && (
-            <div className="home-estancia-body">
-              {alert && <div className={`home-estancia-alert ${alert.type}`}>{alert.message}</div>}
-              <p className="home-estancia-hint">Registra las fechas de tu estancia. Un administrador la revisará y asignará tus puntos.</p>
-              <form className="home-estancia-form" onSubmit={handleEstanciaSubmit} noValidate>
-                <div className="home-estancia-field" style={{ marginBottom: 10 }}>
-                  <label>Ubicación</label>
-                  <select value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} required>
-                    <option value="">Selecciona una ubicación</option>
-                    {ubicaciones.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
+            <div className="booking-body">
+
+              {alert && (
+                <div className={`booking-alert ${alert.type}`}>
+                  {alert.type === 'success'
+                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  }
+                  {alert.message}
                 </div>
-                <div className="home-estancia-row">
-                  <div className="home-estancia-field">
-                    <label>Check-in</label>
+              )}
+
+              <form className="booking-form" onSubmit={handleEstanciaSubmit} noValidate>
+
+                {/* Ubicación */}
+                <div className="booking-field-group">
+                  <div className="booking-field-label">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    Ubicación
+                  </div>
+                  {ubicaciones.length === 0 ? (
+                    <p className="booking-no-locations">No hay ubicaciones disponibles.</p>
+                  ) : (
+                    <div className="booking-location-grid">
+                      {ubicaciones.map((u) => (
+                        <button
+                          key={u}
+                          type="button"
+                          className={`booking-location-btn${ubicacion === u ? ' selected' : ''}`}
+                          onClick={() => setUbicacion(ubicacion === u ? '' : u)}
+                        >
+                          {ubicacion === u && (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          )}
+                          {u}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Fechas */}
+                <div className="booking-dates-card">
+                  <div className="booking-date-block">
+                    <div className="booking-date-label">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                      Llegada
+                    </div>
                     <input
+                      className="booking-date-input"
                       type="date"
                       value={checkIn}
-                      onChange={(e) => setCheckIn(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => { setCheckIn(e.target.value); if (checkOut && e.target.value >= checkOut) setCheckOut('') }}
                       required
                     />
+                    {checkIn && <div className="booking-date-display">{new Date(checkIn + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}</div>}
                   </div>
-                  <div className="home-estancia-field">
-                    <label>Check-out</label>
+
+                  <div className="booking-dates-divider">
+                    {checkIn && checkOut ? (
+                      <div className="booking-nights-badge">
+                        {Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)}
+                        <span>noche{Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000) !== 1 ? 's' : ''}</span>
+                      </div>
+                    ) : (
+                      <div className="booking-dates-arrow">→</div>
+                    )}
+                  </div>
+
+                  <div className="booking-date-block">
+                    <div className="booking-date-label">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                      Salida
+                    </div>
                     <input
+                      className="booking-date-input"
                       type="date"
                       value={checkOut}
+                      min={checkIn || new Date().toISOString().split('T')[0]}
                       onChange={(e) => setCheckOut(e.target.value)}
                       required
                     />
+                    {checkOut && <div className="booking-date-display">{new Date(checkOut + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}</div>}
                   </div>
                 </div>
-                <button type="submit" className="btn-ch-primary" disabled={estanciaLoading} style={{ marginTop: 4 }}>
-                  {estanciaLoading ? 'Registrando...' : 'Registrar Estancia'}
-                </button>
-                {ubicaciones.length === 0 && (
-                  <p className="home-estancia-hint" style={{ marginTop: 8 }}>
-                    No hay ubicaciones disponibles en la base de datos.
-                  </p>
+
+                {/* Resumen */}
+                {ubicacion && checkIn && checkOut && (
+                  <div className="booking-summary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                    <span><strong>{ubicacion}</strong> · {Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)} noche{Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000) !== 1 ? 's' : ''}</span>
+                  </div>
                 )}
+
+                <button type="submit" className="booking-submit" disabled={estanciaLoading || !ubicacion || !checkIn || !checkOut}>
+                  {estanciaLoading
+                    ? <><span className="booking-spinner"/><span>Registrando...</span></>
+                    : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>Confirmar Reserva</span></>
+                  }
+                </button>
               </form>
 
-              {estancias.length > 0 && (
-                <div className="home-estancia-history">
-                  <p className="home-estancia-history-title">Últimas estancias</p>
-                  {estancias.slice(0, 5).map((est, i) => (
-                    <div key={i} className="home-estancia-item">
-                      <div>
-                        <span className="home-estancia-item-title">
-                          {new Date(est.fecha_check_in).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })} — {new Date(est.fecha_check_out).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </span>
-                      </div>
-                      <div className="home-estancia-item-right">
-                        <span className={`home-estancia-badge ${est.estado || 'pendiente'}`}>{est.estado || 'pendiente'}</span>
-                        {est.puntos_ganados > 0 && <span className="home-estancia-pts">+{est.puntos_ganados} pts</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
+
+        {/* Historial de reservas — siempre visible */}
+        {estancias.length > 0 && (
+          <div className="booking-history">
+            <div className="booking-history-title">Mis reservas</div>
+            {estancias.map((est, i) => {
+              const noches = Math.round((new Date(est.fecha_check_out) - new Date(est.fecha_check_in)) / 86400000)
+              return (
+                <div key={i} className="booking-history-item">
+                  <div className="booking-history-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  </div>
+                  <div className="booking-history-info">
+                    <div className="booking-history-loc">{est.ubicacion || 'Sin ubicación'}</div>
+                    <div className="booking-history-dates">
+                      {new Date(est.fecha_check_in + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                      {' → '}
+                      {new Date(est.fecha_check_out + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      <span className="booking-history-nights">· {noches} noche{noches !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                  <div className="booking-history-right">
+                    <span className={`home-estancia-badge ${est.estado || 'pendiente'}`}>{est.estado || 'pendiente'}</span>
+                    {est.puntos_ganados > 0 && <span className="home-estancia-pts">+{est.puntos_ganados} pts</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
       <BottomNav />
     </div>

@@ -3,14 +3,31 @@ const { supabaseAdmin } = require('../config/supabase');
 const TABLE = 'puntos';
 
 const PuntosModel = {
-  // Saldo = suma de todos los movimientos del usuario
+  // Saldo = SUM directamente en SQL (mucho más rápido que descargar todas las filas)
   async getBalance(usuarioId) {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select('puntos')
+      .select('puntos', { count: 'exact' })
       .eq('usuario_id', usuarioId);
+    
     if (error) throw error;
-    return (data || []).reduce((sum, row) => sum + row.puntos, 0);
+    
+    // Usar aggregation más eficiente
+    const { data: result, error: err } = await supabaseAdmin
+      .rpc('get_user_points_balance', { p_usuario_id: usuarioId });
+    
+    if (err && err.code !== 'PGRST204') {
+      // Fallback si la RPC no existe: suma en SQL con aggregation
+      const { data: aggregated, error: aggErr } = await supabaseAdmin
+        .from(TABLE)
+        .select('puntos')
+        .eq('usuario_id', usuarioId);
+      
+      if (aggErr) throw aggErr;
+      return (aggregated || []).reduce((sum, row) => sum + row.puntos, 0);
+    }
+    
+    return result?.[0]?.balance || 0;
   },
 
   async getHistory(usuarioId) {
