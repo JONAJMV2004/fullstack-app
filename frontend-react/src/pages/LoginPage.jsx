@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import CielitoLogo from '../components/CielitoLogo'
 import Alert from '../components/Alert'
-import { GoogleIcon, FacebookIcon, AppleIcon, handleOAuthLogin } from '../components/SocialAuth'
+import { GoogleIcon, FacebookIcon, handleOAuthLogin } from '../components/SocialAuth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -107,9 +107,6 @@ export default function LoginPage() {
           </button>
           <button type="button" className="btn-ch-social" onClick={() => handleOAuthLogin('facebook', setAlert)}>
             <FacebookIcon /> INGRESA CON FACEBOOK
-          </button>
-          <button type="button" className="btn-ch-social" onClick={() => setAlert({ message: 'Login con Apple próximamente disponible.', type: 'error' })}>
-            <AppleIcon /> INGRESA CON APPLE
           </button>
         </div>
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import CielitoLogo from '../components/CielitoLogo'
 import Alert from '../components/Alert'
-import { GoogleIcon, FacebookIcon, AppleIcon, handleOAuthLogin } from '../components/SocialAuth'
+import { GoogleIcon, FacebookIcon, handleOAuthLogin } from '../components/SocialAuth'
 
 const PWA_NEW_USER_KEY = 'pwa_prompt_new_user'
 
@@ -148,9 +148,6 @@ export default function RegisterPage() {
           </button>
           <button type="button" className="btn-ch-icon" onClick={() => handleOAuthLogin('facebook', setAlert)}>
             <FacebookIcon />
-          </button>
-          <button type="button" className="btn-ch-icon" onClick={() => setAlert({ message: 'Login con Apple próximamente disponible.', type: 'error' })}>
-            <AppleIcon />
           </button>
         </div>
 
