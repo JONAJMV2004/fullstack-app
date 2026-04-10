@@ -8,6 +8,7 @@ export default function SplashPage() {
   const [pwaPromptEvent, setPwaPromptEvent] = useState(null)
   const [showPwaPrompt, setShowPwaPrompt] = useState(false)
   const [isIosDevice, setIsIosDevice] = useState(false)
+  const [installHelpText, setInstallHelpText] = useState('')
 
   useEffect(() => {
     const alreadySeen = localStorage.getItem(PWA_LANDING_SEEN_KEY) === '1'
@@ -48,7 +49,14 @@ export default function SplashPage() {
   }, [])
 
   async function handleInstallPwa() {
-    if (!pwaPromptEvent) return
+    if (!pwaPromptEvent) {
+      if (isIosDevice) {
+        setInstallHelpText('En iPhone: Safari > Compartir > Agregar a pantalla de inicio.')
+      } else {
+        setInstallHelpText('Si no aparece el instalador, abre el menu del navegador y selecciona Instalar app o Agregar a pantalla de inicio.')
+      }
+      return
+    }
 
     pwaPromptEvent.prompt()
     await pwaPromptEvent.userChoice
@@ -58,6 +66,7 @@ export default function SplashPage() {
 
   function handleClosePwaPrompt() {
     setShowPwaPrompt(false)
+    setInstallHelpText('')
     localStorage.setItem(PWA_LANDING_SEEN_KEY, '1')
   }
 
@@ -78,12 +87,11 @@ export default function SplashPage() {
               Agrega la app a tu pantalla de inicio para entrar más rápido.
               {isIosDevice && !pwaPromptEvent && ' En Safari, toca Compartir y luego Agregar a pantalla de inicio.'}
             </p>
+            {installHelpText && <p className="pwa-install-note">{installHelpText}</p>}
 
             <div className="modal-actions pwa-modal-actions">
               <button type="button" className="btn-modal-cancel" onClick={handleClosePwaPrompt}>Ahora no</button>
-              {pwaPromptEvent && (
-                <button type="button" className="btn-ch-primary modal-confirm-btn" onClick={handleInstallPwa}>Instalar</button>
-              )}
+              <button type="button" className="btn-ch-primary modal-confirm-btn" onClick={handleInstallPwa}>Instalar</button>
             </div>
           </div>
         </div>

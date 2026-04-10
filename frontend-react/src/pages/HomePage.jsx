@@ -41,6 +41,7 @@ export default function HomePage() {
   const [showPwaPrompt, setShowPwaPrompt] = useState(false)
   const [isIosDevice, setIsIosDevice] = useState(false)
   const [isStandaloneMode, setIsStandaloneMode] = useState(false)
+  const [installHelpText, setInstallHelpText] = useState('')
 
   // Estancia form
   const [showEstancia, setShowEstancia] = useState(false)
@@ -188,7 +189,14 @@ export default function HomePage() {
   }, [token, authHeaders, clearSession])
 
   async function handleInstallPwa() {
-    if (!pwaPromptEvent) return
+    if (!pwaPromptEvent) {
+      if (isIosDevice) {
+        setInstallHelpText('En iPhone: Safari > Compartir > Agregar a pantalla de inicio.')
+      } else {
+        setInstallHelpText('Si no aparece el instalador, abre el menu del navegador y selecciona Instalar app o Agregar a pantalla de inicio.')
+      }
+      return
+    }
 
     pwaPromptEvent.prompt()
     const choice = await pwaPromptEvent.userChoice
@@ -209,6 +217,7 @@ export default function HomePage() {
       localStorage.setItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`, '1')
       localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
     }
+    setInstallHelpText('')
     setShowPwaPrompt(false)
   }
 
@@ -281,12 +290,11 @@ export default function HomePage() {
                 Te recomendamos instalar la app para abrirla más rápido y recibir una experiencia más fluida.
                 {isIosDevice && !pwaPromptEvent && ' En Safari, usa Compartir y luego Agregar a pantalla de inicio.'}
               </p>
+              {installHelpText && <p className="pwa-install-note">{installHelpText}</p>}
 
               <div className="modal-actions pwa-modal-actions">
                 <button type="button" className="btn-modal-cancel" onClick={handleClosePwaPrompt}>Ahora no</button>
-                {pwaPromptEvent && (
-                  <button type="button" className="btn-ch-primary modal-confirm-btn" onClick={handleInstallPwa}>Instalar</button>
-                )}
+                <button type="button" className="btn-ch-primary modal-confirm-btn" onClick={handleInstallPwa}>Instalar</button>
               </div>
             </div>
           </div>
