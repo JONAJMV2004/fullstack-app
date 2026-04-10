@@ -216,7 +216,7 @@ exports.getPremios = async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('premios')
-      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
+      .select('id, nombre, descripcion, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .order('id', { ascending: true });
     if (error) throw error;
     return res.json({ premios: data || [] });
@@ -228,12 +228,13 @@ exports.getPremios = async (req, res) => {
 
 exports.createPremio = async (req, res) => {
   try {
-    const { nombre, puntos_necesarios, disponibilidad, categoria } = req.body;
+    const { nombre, descripcion, puntos_necesarios, disponibilidad, categoria } = req.body;
     if (!nombre || puntos_necesarios === undefined)
       return res.status(400).json({ error: 'nombre y puntos_necesarios son requeridos.' });
 
     const premioPayload = {
       nombre: String(nombre).trim(),
+      descripcion: descripcion ? String(descripcion).trim() : null,
       puntos_necesarios: parseInt(puntos_necesarios, 10),
       disponibilidad: parseInt(disponibilidad, 10) || 0,
       categoria: String(categoria || 'general').trim() || 'general',
@@ -242,7 +243,7 @@ exports.createPremio = async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('premios')
       .insert([premioPayload])
-      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
+      .select('id, nombre, descripcion, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .single();
 
     if (error) throw error;
@@ -256,9 +257,10 @@ exports.createPremio = async (req, res) => {
 exports.updatePremio = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, puntos_necesarios, disponibilidad, categoria } = req.body;
+    const { nombre, descripcion, puntos_necesarios, disponibilidad, categoria } = req.body;
     const updates = {};
     if (nombre !== undefined) updates.nombre = nombre;
+    if (descripcion !== undefined) updates.descripcion = descripcion ? String(descripcion).trim() : null;
     if (puntos_necesarios !== undefined) updates.puntos_necesarios = parseInt(puntos_necesarios);
     if (disponibilidad !== undefined) updates.disponibilidad = parseInt(disponibilidad);
     if (categoria !== undefined) updates.categoria = categoria;
@@ -267,7 +269,7 @@ exports.updatePremio = async (req, res) => {
       .from('premios')
       .update(updates)
       .eq('id', id)
-      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
+      .select('id, nombre, descripcion, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .single();
     if (error) throw error;
     return res.json({ message: 'Premio actualizado.', premio: data });

@@ -203,7 +203,7 @@ export default function RecompensasPage() {
                       </div>
                       <div className="premio-info">
                         <p className="premio-nombre">{p.nombre}</p>
-                        <p className="premio-desc">{p.nombre}</p>
+                        {p.descripcion && <p className="premio-desc">{p.descripcion}</p>}
                       </div>
                       <div className="premio-pts">{p.puntos_necesarios}pt</div>
                     </div>

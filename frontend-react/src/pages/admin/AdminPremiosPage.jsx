@@ -65,6 +65,7 @@ export default function AdminPremiosPage() {
   const [alert, setAlert] = useState(null)
 
   const [fNombre, setFNombre] = useState('')
+  const [fDescripcion, setFDescripcion] = useState('')
   const [fPuntos, setFPuntos] = useState('')
   const [fDisp, setFDisp] = useState('')
   const [fCategoria, setFCategoria] = useState('')
@@ -91,12 +92,12 @@ export default function AdminPremiosPage() {
       const res  = await fetch(`${API_BASE}/admin/premios`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ nombre: fNombre.trim(), puntos_necesarios: parseInt(fPuntos), disponibilidad: parseInt(fDisp) || 0, categoria: fCategoria.trim() || 'general' }),
+        body: JSON.stringify({ nombre: fNombre.trim(), descripcion: fDescripcion.trim() || null, puntos_necesarios: parseInt(fPuntos), disponibilidad: parseInt(fDisp) || 0, categoria: fCategoria.trim() || 'general' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setAlert({ type: 'success', msg: 'Premio creado. Ahora puedes subir la imagen.' })
-      setFNombre(''); setFPuntos(''); setFDisp(''); setFCategoria('')
+      setFNombre(''); setFDescripcion(''); setFPuntos(''); setFDisp(''); setFCategoria('')
       setNewPremioId(data.premio.id)
       cargar()
     } catch (err) { setAlert({ type: 'error', msg: err.message }) }
@@ -108,7 +109,7 @@ export default function AdminPremiosPage() {
       const res  = await fetch(`${API_BASE}/admin/premios/${editTarget.id}`, {
         method: 'PATCH',
         headers: authHeaders(),
-        body: JSON.stringify({ nombre: editTarget.nombre, puntos_necesarios: parseInt(editTarget.puntos_necesarios), disponibilidad: parseInt(editTarget.disponibilidad), categoria: editTarget.categoria }),
+        body: JSON.stringify({ nombre: editTarget.nombre, descripcion: editTarget.descripcion || null, puntos_necesarios: parseInt(editTarget.puntos_necesarios), disponibilidad: parseInt(editTarget.disponibilidad), categoria: editTarget.categoria }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -141,6 +142,10 @@ export default function AdminPremiosPage() {
           <div className="admin-form-group">
             <label>Nombre</label>
             <input className="admin-input" required value={fNombre} onChange={e => setFNombre(e.target.value)} placeholder="Nombre del premio" />
+          </div>
+          <div className="admin-form-group">
+            <label>Descripción</label>
+            <textarea className="admin-input" value={fDescripcion} onChange={e => setFDescripcion(e.target.value)} placeholder="Descripción del premio (opcional)" rows={2} style={{ resize: 'vertical' }} />
           </div>
           <div className="admin-form-group">
             <label>Puntos necesarios</label>
@@ -178,7 +183,7 @@ export default function AdminPremiosPage() {
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>Imagen</th><th>Nombre</th><th>Puntos</th><th>Disponibilidad</th><th>Categoria</th><th>Acciones</th></tr>
+              <tr><th>Imagen</th><th>Nombre</th><th>Descripción</th><th>Puntos</th><th>Disponibilidad</th><th>Categoria</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {!premios.length ? (
@@ -198,6 +203,7 @@ export default function AdminPremiosPage() {
                     )}
                   </td>
                   <td><strong>{p.nombre}</strong></td>
+                  <td style={{ maxWidth: 200, color: '#718096', fontSize: 13 }}>{p.descripcion || '—'}</td>
                   <td>{p.puntos_necesarios} pts</td>
                   <td><span className={`badge ${p.disponibilidad > 0 ? 'activo' : 'inactivo'}`}>{p.disponibilidad}</span></td>
                   <td>{p.categoria}</td>
@@ -240,6 +246,10 @@ export default function AdminPremiosPage() {
                   <input className="admin-input" type="number" value={editTarget.disponibilidad} onChange={e => setEditTarget(p => ({ ...p, disponibilidad: e.target.value }))} />
                 </div>
               </div>
+            </div>
+            <div className="admin-form-group">
+              <label>Descripción</label>
+              <textarea className="admin-input" value={editTarget.descripcion || ''} onChange={e => setEditTarget(prev => ({ ...prev, descripcion: e.target.value }))} rows={2} style={{ resize: 'vertical' }} />
             </div>
             <div className="admin-form-group">
               <label>Categoria</label>
