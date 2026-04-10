@@ -7,6 +7,7 @@ import BottomNav from '../components/BottomNav'
 const PWA_NEW_USER_KEY = 'pwa_prompt_new_user'
 const PWA_DISMISSED_PREFIX = 'pwa_prompt_dismissed_'
 const PWA_FIRST_VISIT_PREFIX = 'pwa_prompt_seen_home_'
+const PWA_LANDING_SEEN_KEY = 'pwa_prompt_seen_landing'
 
 function pad(num, size) {
   return String(num).padStart(size, '0')
@@ -131,11 +132,17 @@ export default function HomePage() {
     if (!currentUserId) return
 
     const pendingForUser = localStorage.getItem(PWA_NEW_USER_KEY)
+    const landingPromptHandled = localStorage.getItem(PWA_LANDING_SEEN_KEY) === '1'
     const alreadyDismissed = localStorage.getItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`) === '1'
     const alreadySeenHome = localStorage.getItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`) === '1'
     const isNewUserPending = pendingForUser === String(currentUserId)
 
     if (alreadyDismissed) {
+      return
+    }
+
+    if (landingPromptHandled && !isNewUserPending) {
+      localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
       return
     }
 
