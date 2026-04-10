@@ -3,6 +3,7 @@ import { useAuth, API_BASE } from '../context/AuthContext'
 import AppTopbar, { AppLogoCircle } from '../components/AppTopbar'
 import BottomNav from '../components/BottomNav'
 import Alert from '../components/Alert'
+import { getCached, setCached } from '../utils/apiCache'
 
 export default function RecompensasPage() {
   const { authHeaders } = useAuth()
@@ -23,6 +24,14 @@ export default function RecompensasPage() {
   }, [])
 
   async function cargarDatos() {
+    // Mostrar caché inmediatamente si existe
+    const cached = getCached('recompensas_data')
+    if (cached) {
+      setBalance(cached.balance)
+      setPremios(cached.premios)
+      setCanjes(cached.canjes)
+    }
+
     try {
       const [puntosRes, premiosRes, canjesRes] = await Promise.all([
         fetch(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
@@ -32,9 +41,15 @@ export default function RecompensasPage() {
       const puntosData = await puntosRes.json()
       const premiosData = await premiosRes.json()
       const canjesData = await canjesRes.json()
-      setBalance(puntosData.balance || 0)
-      setPremios(premiosData.premios || [])
-      setCanjes(canjesData.canjes || [])
+      const fresh = {
+        balance: puntosData.balance || 0,
+        premios: premiosData.premios || [],
+        canjes: canjesData.canjes || [],
+      }
+      setCached('recompensas_data', fresh)
+      setBalance(fresh.balance)
+      setPremios(fresh.premios)
+      setCanjes(fresh.canjes)
     } catch {
       setAlert({ message: 'Error al cargar los premios.', type: 'error' })
     }

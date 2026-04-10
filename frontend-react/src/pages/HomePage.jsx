@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import AppTopbar, { AppLogoCircle } from '../components/AppTopbar'
 import BottomNav from '../components/BottomNav'
+import { getCached, setCached } from '../utils/apiCache'
 
 function pad(num, size) {
   return String(num).padStart(size, '0')
@@ -91,6 +92,15 @@ export default function HomePage() {
     async function cargarHome() {
       if (!token) return
 
+      // Mostrar caché inmediatamente si existe
+      const cached = getCached('home_data')
+      if (cached) {
+        setUserData(cached.user)
+        setBalance(cached.balance)
+        setEstancias(cached.estancias)
+        setUbicaciones(cached.ubicaciones)
+      }
+
       try {
         const meData = await fetchJsonWithRetry(`${API_BASE}/auth/me`, { headers: authHeaders() })
         const [puntosData, estData, ubicacionesData] = await Promise.all([
@@ -99,10 +109,17 @@ export default function HomePage() {
           fetchJsonWithRetry(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
         ])
 
-        setUserData(meData.user)
-        setBalance(puntosData.balance || 0)
-        setEstancias(estData.estancias || [])
-        setUbicaciones(ubicacionesData.ubicaciones || [])
+        const fresh = {
+          user: meData.user,
+          balance: puntosData.balance || 0,
+          estancias: estData.estancias || [],
+          ubicaciones: ubicacionesData.ubicaciones || [],
+        }
+        setCached('home_data', fresh)
+        setUserData(fresh.user)
+        setBalance(fresh.balance)
+        setEstancias(fresh.estancias)
+        setUbicaciones(fresh.ubicaciones)
       } catch (err) {
         if (err?.code === 'AUTH') {
           clearSession()
