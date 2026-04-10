@@ -6,6 +6,7 @@ import BottomNav from '../components/BottomNav'
 
 const PWA_NEW_USER_KEY = 'pwa_prompt_new_user'
 const PWA_DISMISSED_PREFIX = 'pwa_prompt_dismissed_'
+const PWA_FIRST_VISIT_PREFIX = 'pwa_prompt_seen_home_'
 
 function pad(num, size) {
   return String(num).padStart(size, '0')
@@ -32,7 +33,7 @@ function getNivel(balance) {
 }
 
 export default function HomePage() {
-  const { token, authHeaders, clearSession } = useAuth()
+  const { token, user, authHeaders, clearSession } = useAuth()
   const [userData, setUserData] = useState(null)
   const [balance, setBalance] = useState(0)
   const [pwaPromptEvent, setPwaPromptEvent] = useState(null)
@@ -49,6 +50,7 @@ export default function HomePage() {
   const [estanciaLoading, setEstanciaLoading] = useState(false)
   const [estancias, setEstancias] = useState([])
   const [alert, setAlert] = useState(null)
+  const currentUserId = user?.id || userData?.id
 
   async function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms))
@@ -107,9 +109,10 @@ export default function HomePage() {
     }
 
     const handleAppInstalled = () => {
-      if (userData?.id) {
+      if (currentUserId) {
         localStorage.removeItem(PWA_NEW_USER_KEY)
-        localStorage.setItem(`${PWA_DISMISSED_PREFIX}${userData.id}`, '1')
+        localStorage.setItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`, '1')
+        localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
       }
       setShowPwaPrompt(false)
       setPwaPromptEvent(null)
@@ -122,25 +125,33 @@ export default function HomePage() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
     }
-  }, [userData?.id])
+  }, [currentUserId])
 
   useEffect(() => {
-    if (!userData?.id) return
+    if (!currentUserId) return
 
     const pendingForUser = localStorage.getItem(PWA_NEW_USER_KEY)
-    const alreadyDismissed = localStorage.getItem(`${PWA_DISMISSED_PREFIX}${userData.id}`) === '1'
+    const alreadyDismissed = localStorage.getItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`) === '1'
+    const alreadySeenHome = localStorage.getItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`) === '1'
+    const isNewUserPending = pendingForUser === String(currentUserId)
 
-    if (pendingForUser !== String(userData.id) || alreadyDismissed) {
+    if (alreadyDismissed) {
       return
     }
 
     if (isStandaloneMode) {
       localStorage.removeItem(PWA_NEW_USER_KEY)
+      localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
+      return
+    }
+
+    if (!isNewUserPending && alreadySeenHome) {
       return
     }
 
     setShowPwaPrompt(true)
-  }, [userData?.id, isStandaloneMode])
+    localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
+  }, [currentUserId, isStandaloneMode])
 
   useEffect(() => {
     async function cargarHome() {
@@ -175,9 +186,10 @@ export default function HomePage() {
     pwaPromptEvent.prompt()
     const choice = await pwaPromptEvent.userChoice
 
-    if (choice?.outcome === 'accepted' && userData?.id) {
+    if (choice?.outcome === 'accepted' && currentUserId) {
       localStorage.removeItem(PWA_NEW_USER_KEY)
-      localStorage.setItem(`${PWA_DISMISSED_PREFIX}${userData.id}`, '1')
+      localStorage.setItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`, '1')
+      localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
       setShowPwaPrompt(false)
     }
 
@@ -185,9 +197,10 @@ export default function HomePage() {
   }
 
   function handleClosePwaPrompt() {
-    if (userData?.id) {
+    if (currentUserId) {
       localStorage.removeItem(PWA_NEW_USER_KEY)
-      localStorage.setItem(`${PWA_DISMISSED_PREFIX}${userData.id}`, '1')
+      localStorage.setItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`, '1')
+      localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
     }
     setShowPwaPrompt(false)
   }
