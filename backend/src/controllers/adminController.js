@@ -167,7 +167,8 @@ exports.updateEstancia = async (req, res) => {
     const { estado, puntos_ganados } = req.body;
     const updates = {};
     if (estado !== undefined) updates.estado = estado;
-    if (puntos_ganados !== undefined) updates.puntos_ganados = parseInt(puntos_ganados);
+    // No se pueden asignar puntos a estancias rechazadas
+    if (puntos_ganados !== undefined) updates.puntos_ganados = estado === 'rechazado' ? 0 : parseInt(puntos_ganados);
 
     // Fetch current estancia to check previous state
     const { data: current } = await supabaseAdmin
@@ -184,8 +185,13 @@ exports.updateEstancia = async (req, res) => {
       .single();
     if (error) throw error;
 
+    // Usar el valor del body; si no viene, usar el que ya tiene en BD
+    const puntosFinales = puntos_ganados !== undefined
+      ? parseInt(puntos_ganados)
+      : current?.puntos_ganados ?? 0;
+
     // When approving a pending estancia with points, create the points entry
-    if (estado === 'aprobado' && current && current.estado !== 'aprobado' && parseInt(puntos_ganados) > 0) {
+    if (estado === 'aprobado' && current?.estado !== 'aprobado' && puntosFinales > 0) {
       const checkIn = new Date(current.fecha_check_in).toLocaleDateString('es-MX');
       const checkOut = new Date(current.fecha_check_out).toLocaleDateString('es-MX');
       await supabaseAdmin
@@ -193,7 +199,7 @@ exports.updateEstancia = async (req, res) => {
         .insert([{
           usuario_id: current.usuario_id,
           descripcion: `Estancia ${checkIn} – ${checkOut}`,
-          puntos: parseInt(puntos_ganados),
+          puntos: puntosFinales,
         }]);
     }
 
@@ -210,7 +216,7 @@ exports.getPremios = async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('premios')
-      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
+      .select('id, nombre, descripcion, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .order('id', { ascending: true });
     if (error) throw error;
     return res.json({ premios: data || [] });
@@ -222,12 +228,13 @@ exports.getPremios = async (req, res) => {
 
 exports.createPremio = async (req, res) => {
   try {
-    const { nombre, puntos_necesarios, disponibilidad, categoria } = req.body;
+    const { nombre, descripcion, puntos_necesarios, disponibilidad, categoria } = req.body;
     if (!nombre || puntos_necesarios === undefined)
       return res.status(400).json({ error: 'nombre y puntos_necesarios son requeridos.' });
 
     const premioPayload = {
       nombre: String(nombre).trim(),
+      descripcion: descripcion ? String(descripcion).trim() : null,
       puntos_necesarios: parseInt(puntos_necesarios, 10),
       disponibilidad: parseInt(disponibilidad, 10) || 0,
       categoria: String(categoria || 'general').trim() || 'general',
@@ -236,7 +243,7 @@ exports.createPremio = async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('premios')
       .insert([premioPayload])
-      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
+      .select('id, nombre, descripcion, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .single();
 
     if (error) throw error;
@@ -250,9 +257,10 @@ exports.createPremio = async (req, res) => {
 exports.updatePremio = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, puntos_necesarios, disponibilidad, categoria } = req.body;
+    const { nombre, descripcion, puntos_necesarios, disponibilidad, categoria } = req.body;
     const updates = {};
     if (nombre !== undefined) updates.nombre = nombre;
+    if (descripcion !== undefined) updates.descripcion = descripcion ? String(descripcion).trim() : null;
     if (puntos_necesarios !== undefined) updates.puntos_necesarios = parseInt(puntos_necesarios);
     if (disponibilidad !== undefined) updates.disponibilidad = parseInt(disponibilidad);
     if (categoria !== undefined) updates.categoria = categoria;
@@ -261,7 +269,7 @@ exports.updatePremio = async (req, res) => {
       .from('premios')
       .update(updates)
       .eq('id', id)
-      .select('id, nombre, puntos_necesarios, disponibilidad, categoria, imagen_url')
+      .select('id, nombre, descripcion, puntos_necesarios, disponibilidad, categoria, imagen_url')
       .single();
     if (error) throw error;
     return res.json({ message: 'Premio actualizado.', premio: data });
@@ -362,6 +370,29 @@ exports.getCanjes = async (req, res) => {
   }
 };
 
+exports.updateCanje = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    const estadosValidos = ['aprobado', 'rechazado', 'pendiente'];
+    if (!estadosValidos.includes(estado))
+      return res.status(400).json({ error: 'Estado inválido.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('canjes')
+      .update({ estado })
+      .eq('id', id)
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
+      .single();
+    if (error) throw error;
+
+    return res.json({ message: 'Canje actualizado.', canje: data });
+  } catch (err) {
+    console.error('Admin updateCanje:', err);
+    return res.status(500).json({ error: 'Error al actualizar canje.' });
+  }
+};
+
 exports.validarCanje = async (req, res) => {
   try {
     const { codigo } = req.body;
@@ -435,6 +466,52 @@ exports.getReportes = async (req, res) => {
 };
 
 // ── Ubicaciones ──────────────────────────────────────────────────────────────────
+
+exports.getOcupacion = async (req, res) => {
+  try {
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const [{ data: ubicaciones, error: errUb }, { data: estancias, error: errEst }] = await Promise.all([
+      supabaseAdmin.from('ubicaciones').select('id, nombre, activa').order('nombre', { ascending: true }),
+      supabaseAdmin
+        .from('estancias')
+        .select('id, ubicacion, estado, fecha_check_in, fecha_check_out, usuario_id, usuarios(nombre, email)')
+        .neq('estado', 'rechazado')
+        .gte('fecha_check_out', hoy)
+        .order('fecha_check_in', { ascending: true }),
+    ]);
+
+    if (errUb) throw errUb;
+    if (errEst) throw errEst;
+
+    const resultado = (ubicaciones || []).map(ub => {
+      const estanciasUb = (estancias || []).filter(
+        e => (e.ubicacion || '').toLowerCase() === ub.nombre.toLowerCase()
+      );
+
+      const activa = estanciasUb.find(
+        e => e.fecha_check_in <= hoy && e.fecha_check_out >= hoy && e.estado === 'aprobado'
+      );
+      const proximaAprobada = estanciasUb.find(e => e.fecha_check_in > hoy && e.estado === 'aprobado');
+      const pendiente = estanciasUb.find(e => e.estado === 'pendiente');
+
+      let estadoUb = 'disponible';
+      if (activa) estadoUb = 'ocupada';
+      else if (proximaAprobada || pendiente) estadoUb = 'reservada';
+
+      return {
+        ...ub,
+        estado_ocupacion: estadoUb,
+        estancias: estanciasUb,
+      };
+    });
+
+    return res.json({ ubicaciones: resultado });
+  } catch (err) {
+    console.error('Admin getOcupacion:', err);
+    return res.status(500).json({ error: 'Error al obtener ocupación.' });
+  }
+};
 
 exports.getUbicaciones = async (req, res) => {
   try {

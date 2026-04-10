@@ -16,6 +16,7 @@ export default function RecompensasPage() {
   })
   const [modal, setModal] = useState(null)
   const [canjeLoading, setCanjeLoading] = useState(false)
+  const [estanciaActiva, setEstanciaActiva] = useState(null)
 
   useEffect(() => {
     cargarDatos()
@@ -37,6 +38,29 @@ export default function RecompensasPage() {
     } catch {
       setAlert({ message: 'Error al cargar los premios.', type: 'error' })
     }
+
+    // Detectar estancia activa del usuario
+    try {
+      const estanciasRes = await fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() })
+      const estanciasData = await estanciasRes.json()
+      const hoy = new Date().toISOString().split('T')[0]
+      const todas = estanciasData.estancias || []
+
+      // 1. Primero buscar estancia actual activa (aprobada, hospedado hoy)
+      const actual = todas.find(e =>
+        e.estado === 'aprobado' && e.fecha_check_in <= hoy && e.fecha_check_out >= hoy
+      )
+      // 2. Si no, la próxima aprobada
+      const proximaAprobada = todas.find(e =>
+        e.estado === 'aprobado' && e.fecha_check_in > hoy
+      )
+      // 3. Si no, la próxima pendiente
+      const proximaPendiente = todas.find(e =>
+        e.estado === 'pendiente' && e.fecha_check_out >= hoy
+      )
+
+      setEstanciaActiva(actual || proximaAprobada || proximaPendiente || null)
+    } catch { /* no bloquear si falla */ }
   }
 
   function filtrarPremios(tab) {
@@ -60,7 +84,10 @@ export default function RecompensasPage() {
       const res = await fetch(`${API_BASE}/lealtad/canjes`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ premio_id: modal.id }),
+        body: JSON.stringify({
+          premio_id: modal.id,
+          ubicacion: estanciaActiva?.ubicacion || null,
+        }),
       })
       const data = await res.json()
       setModal(null)
@@ -132,7 +159,8 @@ export default function RecompensasPage() {
                       <div className="canje-item-info">
                         <p className="canje-item-nombre">{c.premios?.nombre || `Premio #${c.premio_id}`}</p>
                         <p className="canje-item-codigo">Código: <strong>{c.codigo_unico}</strong></p>
-                        <p className="canje-item-meta">{formatFecha(c.fecha)} &bull; {c.puntos_utilizados} pts</p>
+                        <p className="canje-item-meta">{formatFecha(c.fecha || c.fecha_canje || c.created_at)} &bull; {c.puntos_utilizados} pts</p>
+                        {c.ubicacion && <p className="canje-item-meta" style={{ color: '#2D6A50', fontWeight: 600 }}>📍 {c.ubicacion}</p>}
                       </div>
                       <span className={`badge-canje ${c.estado}`}>{c.estado}</span>
                     </div>
@@ -175,7 +203,7 @@ export default function RecompensasPage() {
                       </div>
                       <div className="premio-info">
                         <p className="premio-nombre">{p.nombre}</p>
-                        <p className="premio-desc">{p.nombre}</p>
+                        {p.descripcion && <p className="premio-desc">{p.descripcion}</p>}
                       </div>
                       <div className="premio-pts">{p.puntos_necesarios}pt</div>
                     </div>
@@ -190,12 +218,49 @@ export default function RecompensasPage() {
       <BottomNav />
 
       {modal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(null)}>
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setModal(null) }}>
           <div className="modal-card">
             <h3 className="modal-title">Confirmar Canje</h3>
             <p className="modal-desc">
-              ¿Deseas canjear &ldquo;{modal.nombre}&rdquo; por {modal.puntos} punto(s)? Te quedarán {balance - modal.puntos} puntos.
+              ¿Deseas canjear &ldquo;{modal.nombre}&rdquo; por <strong>{modal.puntos} pts</strong>? Te quedarán <strong>{balance - modal.puntos} pts</strong>.
             </p>
+
+            {/* Ubicación auto-detectada */}
+            {estanciaActiva ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                background: '#f0fff4', border: '1.5px solid #9ae6b4',
+                borderRadius: 12, padding: '12px 16px', marginBottom: 18,
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, background: '#2D6A50',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: '.72rem', color: '#276749', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                    Entrega en tu ubicación
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '.95rem', color: '#1a2e22' }}>{estanciaActiva.ubicacion}</div>
+                  <div style={{ fontSize: '.75rem', color: '#38a169', marginTop: 1 }}>
+                    {new Date(estanciaActiva.fecha_check_in + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                    {' → '}
+                    {new Date(estanciaActiva.fecha_check_out + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    <span style={{
+                      marginLeft: 8, background: estanciaActiva.estado === 'aprobado' ? '#c6f6d5' : '#fefcbf',
+                      color: estanciaActiva.estado === 'aprobado' ? '#276749' : '#744210',
+                      borderRadius: 6, padding: '1px 7px', fontWeight: 700
+                    }}>{estanciaActiva.estado}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: '#fff5f5', border: '1px solid #fed7d7', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: '.83rem', color: '#c53030' }}>
+                No tienes reservas activas o próximas. El premio se registrará sin ubicación de entrega.
+              </div>
+            )}
+
             <div className="modal-actions">
               <button className="btn-modal-cancel" onClick={() => setModal(null)}>Cancelar</button>
               <button className="btn-ch-primary modal-confirm-btn" onClick={confirmarCanje} disabled={canjeLoading}>

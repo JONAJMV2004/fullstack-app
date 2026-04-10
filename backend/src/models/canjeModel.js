@@ -3,16 +3,19 @@ const { supabaseAdmin } = require('../config/supabase');
 const TABLE = 'canjes';
 
 const CanjeModel = {
-  async create({ usuarioId, premioId, puntosUtilizados, codigoUnico }) {
+  async create({ usuarioId, premioId, puntosUtilizados, codigoUnico, ubicacion }) {
+    const payload = {
+      usuario_id: usuarioId,
+      premio_id: premioId,
+      puntos_utilizados: puntosUtilizados,
+      codigo_unico: codigoUnico,
+      estado: 'pendiente',
+    };
+    if (ubicacion) payload.ubicacion = ubicacion;
+
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .insert([{
-        usuario_id: usuarioId,
-        premio_id: premioId,
-        puntos_utilizados: puntosUtilizados,
-        codigo_unico: codigoUnico,
-        estado: 'pendiente',
-      }])
+      .insert([payload])
       .select('*, premios(nombre)')
       .single();
     if (error) throw error;
