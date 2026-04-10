@@ -153,7 +153,7 @@ exports.oauthCallback = async (req, res) => {
       supaUser.email.split('@')[0];
     const avatarUrl = supaUser.user_metadata?.avatar_url || null;
 
-    const usuario = await UsuarioModel.upsertOAuth({
+    const { user: usuario, isNewUser } = await UsuarioModel.upsertOAuth({
       nombre,
       email: String(supaUser.email || '').trim().toLowerCase(),
       provider,
@@ -166,6 +166,7 @@ exports.oauthCallback = async (req, res) => {
     return res.status(200).json({
       message: 'Login OAuth exitoso.',
       token,
+      is_new_user: !!isNewUser,
       user: { id: usuario.id, nombre: usuario.nombre, name: usuario.nombre, email: usuario.email, tipo_usuario: usuario.tipo_usuario, avatar_url: usuario.avatar_url },
     });
   } catch (err) {

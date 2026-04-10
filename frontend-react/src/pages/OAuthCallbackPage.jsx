@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, API_BASE } from '../context/AuthContext'
 
+const PWA_NEW_USER_KEY = 'pwa_prompt_new_user'
+
 export default function OAuthCallbackPage() {
   const [status, setStatus] = useState('Verificando autenticación…')
   const { saveSession } = useAuth()
@@ -33,6 +35,10 @@ export default function OAuthCallbackPage() {
           setStatus(data.error || 'Authentication failed.')
           setTimeout(() => navigate('/'), 2500)
           return
+        }
+
+        if (data?.is_new_user && data?.user?.id) {
+          localStorage.setItem(PWA_NEW_USER_KEY, String(data.user.id))
         }
 
         saveSession(data.token, data.user)

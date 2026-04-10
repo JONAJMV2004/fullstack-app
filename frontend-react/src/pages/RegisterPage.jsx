@@ -5,6 +5,8 @@ import CielitoLogo from '../components/CielitoLogo'
 import Alert from '../components/Alert'
 import { GoogleIcon, FacebookIcon, AppleIcon, handleOAuthLogin } from '../components/SocialAuth'
 
+const PWA_NEW_USER_KEY = 'pwa_prompt_new_user'
+
 export default function RegisterPage() {
   const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
@@ -61,6 +63,11 @@ export default function RegisterPage() {
         setAlert({ message: data.error || 'Error al crear cuenta.', type: 'error' })
         return
       }
+
+      if (data?.user?.id) {
+        localStorage.setItem(PWA_NEW_USER_KEY, String(data.user.id))
+      }
+
       saveSession(data.token, data.user)
       setAlert({ message: 'Cuenta creada exitosamente.', type: 'success' })
       setTimeout(() => navigate('/home'), 800)
