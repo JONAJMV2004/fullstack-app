@@ -91,4 +91,40 @@ async function enviarCorreoCanjeAprobado({ email, nombre, premio, codigoUnico })
   });
 }
 
-module.exports = { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado };
+async function enviarCorreoMarketing({ emails, asunto, mensaje, imagenUrl }) {
+  const bloqueImagen = imagenUrl
+    ? `<img src="${imagenUrl}" alt="Promoción Cielito Home" style="width:100%;max-width:560px;display:block;border-radius:8px;margin-bottom:20px;" />`
+    : '';
+
+  const html = plantillaBase(`
+    ${bloqueImagen}
+    <h2 style="font-size:1.15rem;font-weight:700;color:#2d3748;margin:0 0 14px;">${asunto}</h2>
+    <div style="font-size:.92rem;color:#4a5568;line-height:1.7;white-space:pre-line;">${mensaje}</div>
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;">
+      <p style="font-size:.8rem;color:#a0aec0;margin:0;">Eres parte del programa de lealtad de Cielito Home.<br>Para dejar de recibir correos, contáctanos en recepción.</p>
+    </div>
+  `);
+
+  const resultados = { enviados: 0, fallidos: 0 };
+
+  for (const email of emails) {
+    try {
+      await transporter.sendMail({
+        from: `"Cielito Home" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: asunto,
+        html,
+      });
+      resultados.enviados++;
+    } catch (err) {
+      console.error(`Error enviando a ${email}:`, err.message);
+      resultados.fallidos++;
+    }
+    // Pausa entre envíos para no superar límites de Gmail
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  return resultados;
+}
+
+module.exports = { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing };

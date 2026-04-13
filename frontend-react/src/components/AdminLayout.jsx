@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/admin/premios',   label: 'Premios',    icon: 'M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6M12 3v12M4 7l8-4 8 4' },
   { to: '/admin/canjes',      label: 'Canjes',      icon: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2' },
   { to: '/admin/ubicaciones', label: 'Ubicaciones', icon: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z' },
+  { to: '/admin/marketing',  label: 'Marketing',   icon: 'M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z' },
 ]
 
 export default function AdminLayout({ title, children }) {

@@ -1,7 +1,7 @@
 const { supabaseAdmin } = require('../config/supabase');
 const bcrypt = require('bcryptjs');
 const CodigoModel = require('../models/codigoModel');
-const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado } = require('../config/mailer');
+const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing } = require('../config/mailer');
 
 const STORAGE_BUCKET_PREMIOS = process.env.SUPABASE_STORAGE_BUCKET_PREMIOS || 'premios';
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -775,5 +775,42 @@ exports.deleteCodigo = async (req, res) => {
   } catch (err) {
     console.error('Admin deleteCodigo:', err);
     return res.status(500).json({ error: 'Error al eliminar código.' });
+  }
+};
+
+// POST /admin/marketing — envío masivo de correos a todos los clientes
+exports.enviarMarketing = async (req, res) => {
+  try {
+    const { asunto, mensaje, imagenUrl } = req.body;
+    if (!asunto?.trim() || !mensaje?.trim())
+      return res.status(400).json({ error: 'El asunto y el mensaje son requeridos.' });
+
+    // Obtener todos los usuarios clientes con email
+    const { data: usuarios, error } = await supabaseAdmin
+      .from('usuarios')
+      .select('email, nombre')
+      .eq('tipo_usuario', 'cliente')
+      .not('email', 'is', null);
+
+    if (error) throw error;
+    if (!usuarios?.length)
+      return res.json({ message: 'No hay clientes registrados.', enviados: 0, fallidos: 0 });
+
+    const emails = usuarios.map(u => u.email);
+    const resultados = await enviarCorreoMarketing({
+      emails,
+      asunto: asunto.trim(),
+      mensaje: mensaje.trim(),
+      imagenUrl: imagenUrl?.trim() || null,
+    });
+
+    return res.json({
+      message: `Campaña enviada: ${resultados.enviados} correos entregados, ${resultados.fallidos} fallidos.`,
+      total: emails.length,
+      ...resultados,
+    });
+  } catch (err) {
+    console.error('Admin enviarMarketing:', err);
+    return res.status(500).json({ error: 'Error al enviar la campaña.' });
   }
 };

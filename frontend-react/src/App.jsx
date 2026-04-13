@@ -24,6 +24,7 @@ import AdminCodigosPage from './pages/admin/AdminCodigosPage'
 import AdminPremiosPage from './pages/admin/AdminPremiosPage'
 import AdminCanjesPage from './pages/admin/AdminCanjesPage'
 import AdminUbicacionesPage from './pages/admin/AdminUbicacionesPage'
+import AdminMarketingPage from './pages/admin/AdminMarketingPage'
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useAuth()
@@ -76,6 +77,7 @@ export default function App() {
       <Route path="/admin/premios" element={<AdminRoute><AdminPremiosPage /></AdminRoute>} />
       <Route path="/admin/canjes" element={<AdminRoute><AdminCanjesPage /></AdminRoute>} />
       <Route path="/admin/ubicaciones" element={<AdminRoute><AdminUbicacionesPage /></AdminRoute>} />
+      <Route path="/admin/marketing"   element={<AdminRoute><AdminMarketingPage /></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

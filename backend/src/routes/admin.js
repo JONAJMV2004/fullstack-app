@@ -47,6 +47,9 @@ router.get('/codigos',        adminCtrl.getCodigos);
 router.post('/codigos',       adminCtrl.createCodigo);
 router.delete('/codigos/:id', adminCtrl.deleteCodigo);
 
+// Marketing masivo
+router.post('/marketing', adminCtrl.enviarMarketing);
+
 // Reportes
 router.get('/reportes', adminCtrl.getReportes);
 
