@@ -1,5 +1,7 @@
 const { supabaseAdmin } = require('../config/supabase');
 const bcrypt = require('bcryptjs');
+const CodigoModel = require('../models/codigoModel');
+const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado } = require('../config/mailer');
 
 const STORAGE_BUCKET_PREMIOS = process.env.SUPABASE_STORAGE_BUCKET_PREMIOS || 'premios';
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -173,7 +175,7 @@ exports.updateEstancia = async (req, res) => {
     // Fetch current estancia to check previous state
     const { data: current } = await supabaseAdmin
       .from('estancias')
-      .select('estado, puntos_ganados, usuario_id, fecha_check_in, fecha_check_out')
+      .select('estado, puntos_ganados, usuario_id, fecha_check_in, fecha_check_out, noches, usuarios(nombre, email)')
       .eq('id', id)
       .single();
 
@@ -201,6 +203,18 @@ exports.updateEstancia = async (req, res) => {
           descripcion: `Estancia ${checkIn} – ${checkOut}`,
           puntos: puntosFinales,
         }]);
+
+      // Enviar correo de confirmacion al huesped
+      if (current?.usuarios?.email) {
+        enviarCorreoEstanciaAprobada({
+          email: current.usuarios.email,
+          nombre: current.usuarios.nombre || 'Huesped',
+          checkIn,
+          checkOut,
+          noches: current.noches ?? '—',
+          puntos: puntosFinales,
+        }).catch(err => console.error('Error enviando correo estancia:', err));
+      }
     }
 
     return res.json({ message: 'Estancia actualizada.', estancia: data });
@@ -386,6 +400,16 @@ exports.updateCanje = async (req, res) => {
       .single();
     if (error) throw error;
 
+    // Enviar correo cuando el canje es aprobado
+    if (estado === 'aprobado' && data?.usuarios?.email) {
+      enviarCorreoCanjeAprobado({
+        email: data.usuarios.email,
+        nombre: data.usuarios.nombre || 'Usuario',
+        premio: data.premios?.nombre || 'Premio',
+        codigoUnico: data.codigo_unico,
+      }).catch(err => console.error('Error enviando correo canje:', err));
+    }
+
     return res.json({ message: 'Canje actualizado.', canje: data });
   } catch (err) {
     console.error('Admin updateCanje:', err);
@@ -469,40 +493,55 @@ exports.getReportes = async (req, res) => {
 
 exports.getOcupacion = async (req, res) => {
   try {
-    const hoy = new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const hoy = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-    const [{ data: ubicaciones, error: errUb }, { data: estancias, error: errEst }] = await Promise.all([
+    const [{ data: ubicaciones, error: errUb }, { data: codigos, error: errCod }] = await Promise.all([
       supabaseAdmin.from('ubicaciones').select('id, nombre, activa').order('nombre', { ascending: true }),
       supabaseAdmin
-        .from('estancias')
-        .select('id, ubicacion, estado, fecha_check_in, fecha_check_out, usuario_id, usuarios(nombre, email)')
-        .neq('estado', 'rechazado')
-        .gte('fecha_check_out', hoy)
-        .order('fecha_check_in', { ascending: true }),
+        .from('codigos')
+        .select('id, ubicacion, estatus, fecha_ingreso, fecha_salida, noches, puntos, usuario_id, usuarios(nombre, email)')
+        .eq('estatus', 'canjeado')
+        .gte('fecha_salida', hoy)
+        .order('fecha_ingreso', { ascending: true }),
     ]);
 
     if (errUb) throw errUb;
-    if (errEst) throw errEst;
+    if (errCod) throw errCod;
 
     const resultado = (ubicaciones || []).map(ub => {
-      const estanciasUb = (estancias || []).filter(
-        e => (e.ubicacion || '').toLowerCase() === ub.nombre.toLowerCase()
+      const codigosUb = (codigos || []).filter(
+        c => (c.ubicacion || '').toLowerCase() === ub.nombre.toLowerCase()
       );
 
-      const activa = estanciasUb.find(
-        e => e.fecha_check_in <= hoy && e.fecha_check_out >= hoy && e.estado === 'aprobado'
+      // Normalizar a YYYY-MM-DD para comparación segura sin problemas de timezone
+      const norm = (d) => String(d || '').substring(0, 10);
+
+      const actual = codigosUb.find(
+        c => norm(c.fecha_ingreso) <= hoy && norm(c.fecha_salida) >= hoy
       );
-      const proximaAprobada = estanciasUb.find(e => e.fecha_check_in > hoy && e.estado === 'aprobado');
-      const pendiente = estanciasUb.find(e => e.estado === 'pendiente');
+      const proximas = codigosUb.filter(c => norm(c.fecha_ingreso) > hoy);
 
       let estadoUb = 'disponible';
-      if (activa) estadoUb = 'ocupada';
-      else if (proximaAprobada || pendiente) estadoUb = 'reservada';
+      if (actual) estadoUb = 'ocupada';
+      else if (proximas.length > 0) estadoUb = 'reservada';
+
+      // Mapear al formato que espera el frontend
+      const estancias = codigosUb.map(c => ({
+        id: c.id,
+        fecha_check_in: c.fecha_ingreso,
+        fecha_check_out: c.fecha_salida,
+        estado: 'canjeado',
+        noches: c.noches,
+        puntos: c.puntos,
+        usuario_id: c.usuario_id,
+        usuarios: c.usuarios,
+      }));
 
       return {
         ...ub,
         estado_ocupacion: estadoUb,
-        estancias: estanciasUb,
+        estancias,
       };
     });
 
@@ -579,5 +618,162 @@ exports.deleteUbicacion = async (req, res) => {
   } catch (err) {
     console.error('Admin deleteUbicacion:', err);
     return res.status(500).json({ error: 'Error al eliminar ubicación.' });
+  }
+};
+
+// ── Analítica de Puntos ───────────────────────────────────────────────────────
+
+exports.getAnalitica = async (req, res) => {
+  try {
+    const { mes } = req.query; // formato: "2026-04"
+
+    const [{ data: todosPuntos, error: errP }, { data: codigos, error: errC }] = await Promise.all([
+      supabaseAdmin
+        .from('puntos')
+        .select('usuario_id, puntos, descripcion, fecha, usuarios(nombre, email)')
+        .order('fecha', { ascending: false }),
+      supabaseAdmin
+        .from('codigos')
+        .select('ubicacion, fecha_ingreso, noches, puntos, usuario_id, usuarios(nombre, email)')
+        .eq('estatus', 'canjeado')
+        .order('fecha_ingreso', { ascending: false }),
+    ]);
+
+    if (errP) throw errP;
+    if (errC) throw errC;
+
+    const puntos  = todosPuntos || [];
+    const codigosTodos = codigos || [];
+
+    // Filtrar por mes si se pasa
+    const puntosMes  = mes ? puntos.filter(p  => String(p.fecha        || '').startsWith(mes)) : puntos;
+    const codigosMes = mes ? codigosTodos.filter(c => String(c.fecha_ingreso || '').startsWith(mes)) : codigosTodos;
+
+    // ── Top usuarios por puntos ganados (desde codigos canjeados) ──
+    const mapaUsuarios = {};
+    codigosTodos.filter(c => c.usuario_id).forEach(c => {
+      const id = c.usuario_id;
+      if (!mapaUsuarios[id]) {
+        mapaUsuarios[id] = {
+          nombre: c.usuarios?.nombre || `Usuario ${id}`,
+          email:  c.usuarios?.email  || '—',
+          total:  0,
+          movimientos: 0,
+        };
+      }
+      mapaUsuarios[id].total      += c.puntos || 0;
+      mapaUsuarios[id].movimientos++;
+    });
+    const topUsuarios = Object.values(mapaUsuarios).sort((a, b) => b.total - a.total).slice(0, 10);
+
+    // ── Estadías por ubicación en el mes ──
+    const mapaUbicaciones = {};
+    codigosMes.forEach(c => {
+      const ub = c.ubicacion || 'Sin ubicación';
+      if (!mapaUbicaciones[ub]) mapaUbicaciones[ub] = { ubicacion: ub, estadias: 0, noches: 0, puntos: 0 };
+      mapaUbicaciones[ub].estadias++;
+      mapaUbicaciones[ub].noches  += c.noches || 0;
+      mapaUbicaciones[ub].puntos  += c.puntos || 0;
+    });
+    const ubicacionesMes = Object.values(mapaUbicaciones).sort((a, b) => b.estadias - a.estadias);
+
+    // ── Puntos asignados en el mes con detalle ──
+    const asignadosMes = puntosMes.filter(p => p.puntos > 0).slice(0, 100);
+
+    // ── Tendencia mensual últimos 6 meses ──
+    const tendencia = {};
+    const ahora = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('es-MX', { month: 'short', year: '2-digit' });
+      tendencia[key] = { mes: key, label, estadias: 0, puntos: 0 };
+    }
+    codigosTodos.forEach(c => {
+      const key = String(c.fecha_ingreso || '').substring(0, 7);
+      if (tendencia[key]) {
+        tendencia[key].estadias++;
+        tendencia[key].puntos += c.puntos || 0;
+      }
+    });
+
+    // ── Resumen general ──
+    const totalEmitidos  = puntos.filter(p => p.puntos > 0).reduce((s, p) => s + p.puntos, 0);
+    const totalCanjeados = Math.abs(puntos.filter(p => p.puntos < 0).reduce((s, p) => s + p.puntos, 0));
+
+    return res.json({
+      topUsuarios,
+      ubicacionesMes,
+      asignadosMes,
+      tendencia: Object.values(tendencia),
+      resumen: { totalEmitidos, totalCanjeados, estadiasMes: codigosMes.length, puntosMes: asignadosMes.reduce((s, p) => s + p.puntos, 0) },
+    });
+  } catch (err) {
+    console.error('Admin getAnalitica:', err);
+    return res.status(500).json({ error: 'Error al obtener analítica.' });
+  }
+};
+
+// ── Códigos ──────────────────────────────────────────────────────────────────
+
+exports.getCodigos = async (req, res) => {
+  try {
+    const codigos = await CodigoModel.getAll();
+    return res.json({ codigos });
+  } catch (err) {
+    console.error('Admin getCodigos:', err);
+    return res.status(500).json({ error: 'Error al obtener códigos.' });
+  }
+};
+
+exports.createCodigo = async (req, res) => {
+  try {
+    const { codigo, ubicacion, fecha_ingreso, fecha_salida, noches, puntos } = req.body;
+
+    if (!codigo || !ubicacion || !fecha_ingreso || !fecha_salida || noches === undefined || puntos === undefined)
+      return res.status(400).json({ error: 'codigo, ubicacion, fecha_ingreso, fecha_salida, noches y puntos son requeridos.' });
+
+    if (parseInt(noches) <= 0)
+      return res.status(400).json({ error: 'Las noches deben ser mayor a 0.' });
+
+    if (parseInt(puntos) < 0)
+      return res.status(400).json({ error: 'Los puntos no pueden ser negativos.' });
+
+    const nuevo = await CodigoModel.create({
+      codigo,
+      ubicacion,
+      fechaIngreso: fecha_ingreso,
+      fechaSalida: fecha_salida,
+      noches,
+      puntos,
+    });
+    return res.status(201).json({ message: 'Código creado.', codigo: nuevo });
+  } catch (err) {
+    console.error('Admin createCodigo:', err);
+    if (err.code === '23505')
+      return res.status(409).json({ error: 'Ya existe un código con ese nombre.' });
+    return res.status(500).json({ error: 'Error al crear código.' });
+  }
+};
+
+exports.deleteCodigo = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // No permitir eliminar un código ya canjeado
+    const { data: existente } = await supabaseAdmin
+      .from('codigos')
+      .select('estatus')
+      .eq('id', id)
+      .single();
+
+    if (existente?.estatus === 'canjeado')
+      return res.status(409).json({ error: 'No se puede eliminar un código ya canjeado.' });
+
+    await CodigoModel.delete(id);
+    return res.json({ message: 'Código eliminado.' });
+  } catch (err) {
+    console.error('Admin deleteCodigo:', err);
+    return res.status(500).json({ error: 'Error al eliminar código.' });
   }
 };
