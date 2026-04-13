@@ -19,6 +19,25 @@ export function FacebookIcon() {
   )
 }
 
+export function InstagramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+      <defs>
+        <radialGradient id="ig-grad" cx="30%" cy="107%" r="150%">
+          <stop offset="0%"  stopColor="#ffd600" />
+          <stop offset="15%" stopColor="#ff7a00" />
+          <stop offset="35%" stopColor="#ff0069" />
+          <stop offset="65%" stopColor="#d300c5" />
+          <stop offset="100%" stopColor="#7638fa" />
+        </radialGradient>
+      </defs>
+      <rect x="2" y="2" width="20" height="20" rx="6" ry="6" fill="url(#ig-grad)" />
+      <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.8" fill="none" />
+      <circle cx="17.5" cy="6.5" r="1.1" fill="white" />
+    </svg>
+  )
+}
+
 export function AppleIcon() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
