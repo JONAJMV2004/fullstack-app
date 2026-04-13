@@ -89,6 +89,25 @@ create index if not exists idx_canjes_usuario on public.canjes (usuario_id);
 create index if not exists idx_canjes_codigo  on public.canjes (codigo_unico);
 
 -- -----------------------------------------------------------------------------
+-- TABLA: codigos  (códigos de estadía para canjear puntos)
+-- -----------------------------------------------------------------------------
+create table if not exists public.codigos (
+  id            bigserial primary key,
+  codigo        text not null unique,
+  ubicacion     text not null,
+  fecha_ingreso date not null,
+  fecha_salida  date not null,
+  noches        integer not null check (noches > 0),
+  puntos        integer not null check (puntos >= 0),
+  estatus       text not null default 'disponible' check (estatus in ('disponible', 'canjeado')),
+  usuario_id    uuid references public.usuarios (id) on delete set null,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists idx_codigos_codigo   on public.codigos (codigo);
+create index if not exists idx_codigos_usuario  on public.codigos (usuario_id);
+
+-- -----------------------------------------------------------------------------
 -- TABLA: ubicaciones  (catálogo de propiedades disponibles)
 -- -----------------------------------------------------------------------------
 create table if not exists public.ubicaciones (

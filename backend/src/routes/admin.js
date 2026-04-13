@@ -22,8 +22,9 @@ router.delete('/usuarios/:id',         adminCtrl.deleteUsuario);
 router.patch('/usuarios/:id/password', adminCtrl.cambiarPasswordUsuario);
 
 // Puntos
-router.get('/puntos',    adminCtrl.getPuntos);
-router.post('/puntos',   adminCtrl.ajustarPuntos);
+router.get('/puntos',       adminCtrl.getPuntos);
+router.post('/puntos',      adminCtrl.ajustarPuntos);
+router.get('/analitica',    adminCtrl.getAnalitica);
 
 // Estancias
 router.get('/estancias',        adminCtrl.getEstancias);
@@ -40,6 +41,11 @@ router.post('/premios/:id/imagen', upload.single('imagen'), adminCtrl.subirImage
 router.get('/canjes',           adminCtrl.getCanjes);
 router.patch('/canjes/:id',     adminCtrl.updateCanje);
 router.post('/canjes/validar',  adminCtrl.validarCanje);
+
+// Códigos
+router.get('/codigos',        adminCtrl.getCodigos);
+router.post('/codigos',       adminCtrl.createCodigo);
+router.delete('/codigos/:id', adminCtrl.deleteCodigo);
 
 // Reportes
 router.get('/reportes', adminCtrl.getReportes);

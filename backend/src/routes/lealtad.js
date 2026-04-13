@@ -5,10 +5,14 @@ const { verifyToken } = require('../middleware/auth');
 
 router.use(verifyToken);
 
-// Estancias
-router.post('/estancias', ctrl.registrarEstancia);
+// Estancias (mantenidas por histórico)
 router.get('/estancias', ctrl.getEstancias);
 router.get('/ubicaciones', ctrl.getUbicaciones);
+
+// Códigos
+router.post('/codigos/canjear', ctrl.canjearCodigo);
+router.get('/codigos', ctrl.getCodigosUsuario);
+router.patch('/codigos/:id/resena', ctrl.guardarResena);
 
 // Puntos (balance + historial + resumen)
 router.get('/puntos', ctrl.getPuntos);
