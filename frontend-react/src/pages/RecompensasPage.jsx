@@ -41,25 +41,25 @@ export default function RecompensasPage() {
 
     // Detectar estancia activa del usuario
     try {
-      const estanciasRes = await fetch(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() })
-      const estanciasData = await estanciasRes.json()
+      const codigosRes = await fetch(`${API_BASE}/lealtad/codigos`, { headers: authHeaders() })
+      const codigosData = await codigosRes.json()
       const hoy = new Date().toISOString().split('T')[0]
-      const todas = estanciasData.estancias || []
+      const codigos = codigosData.codigos || []
 
-      // 1. Primero buscar estancia actual activa (aprobada, hospedado hoy)
-      const actual = todas.find(e =>
-        e.estado === 'aprobado' && e.fecha_check_in <= hoy && e.fecha_check_out >= hoy
-      )
-      // 2. Si no, la próxima aprobada
-      const proximaAprobada = todas.find(e =>
-        e.estado === 'aprobado' && e.fecha_check_in > hoy
-      )
-      // 3. Si no, la próxima pendiente
-      const proximaPendiente = todas.find(e =>
-        e.estado === 'pendiente' && e.fecha_check_out >= hoy
-      )
+      // Buscar codigo con estadía activa hoy, si no la próxima
+      const codigoActivo = codigos.find(c => c.fecha_ingreso <= hoy && c.fecha_salida >= hoy)
+        || codigos.find(c => c.fecha_ingreso > hoy)
 
-      setEstanciaActiva(actual || proximaAprobada || proximaPendiente || null)
+      if (codigoActivo) {
+        setEstanciaActiva({
+          ubicacion: codigoActivo.ubicacion,
+          fecha_check_in: codigoActivo.fecha_ingreso,
+          fecha_check_out: codigoActivo.fecha_salida,
+          estado: 'aprobado',
+        })
+      } else {
+        setEstanciaActiva(null)
+      }
     } catch { /* no bloquear si falla */ }
   }
 
@@ -177,37 +177,59 @@ export default function RecompensasPage() {
                 {currentPremios.length === 0 ? (
                   <p className="empty-list">No hay premios disponibles.</p>
                 ) : (
-                  currentPremios.map((p) => (
-                    <div
-                      key={p.id}
-                      className={`premio-item ${balance < p.puntos_necesarios ? 'disabled' : ''}`}
-                      onClick={() => {
-                        if (balance >= p.puntos_necesarios) {
-                          setModal({ id: p.id, nombre: p.nombre, puntos: p.puntos_necesarios })
-                        }
-                      }}
-                    >
-                      <div className="premio-icon">
-                        {p.imagen_url ? (
-                          <img
-                            src={p.imagen_url}
-                            alt={p.nombre}
-                            style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 14 }}
-                          />
-                        ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="#2D6A50" strokeWidth="1.5" width="36" height="36">
-                            <path d="M18 8h1a4 4 0 0 1 0 8h-1" /><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
-                            <line x1="6" y1="1" x2="6" y2="4" /><line x1="10" y1="1" x2="10" y2="4" /><line x1="14" y1="1" x2="14" y2="4" />
-                          </svg>
-                        )}
+                  currentPremios.map((p) => {
+                    const alcance = p.puntos_necesarios > 0
+                      ? Math.min((balance / p.puntos_necesarios) * 100, 100)
+                      : 100
+                    const listo = balance >= p.puntos_necesarios
+                    return (
+                      <div
+                        key={p.id}
+                        className={`premio-item ${listo ? '' : 'disabled'}`}
+                        onClick={() => {
+                          if (listo) setModal({ id: p.id, nombre: p.nombre, puntos: p.puntos_necesarios })
+                        }}
+                      >
+                        {/* Fila principal: icono + info + puntos */}
+                        <div className="premio-item-row">
+                          <div className="premio-icon">
+                            {p.imagen_url ? (
+                              <img
+                                src={p.imagen_url}
+                                alt={p.nombre}
+                                style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 14 }}
+                              />
+                            ) : (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="#2D6A50" strokeWidth="1.5" width="36" height="36">
+                                <path d="M18 8h1a4 4 0 0 1 0 8h-1" /><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
+                                <line x1="6" y1="1" x2="6" y2="4" /><line x1="10" y1="1" x2="10" y2="4" /><line x1="14" y1="1" x2="14" y2="4" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="premio-info">
+                            <p className="premio-nombre">{p.nombre}</p>
+                            {p.descripcion && <p className="premio-desc">{p.descripcion}</p>}
+                          </div>
+                          <div className="premio-pts">{p.puntos_necesarios}pt</div>
+                        </div>
+
+                        {/* Barra de alcance */}
+                        <div className="premio-progress-wrap">
+                          <div className="premio-progress-track">
+                            <div
+                              className={`premio-progress-fill ${listo ? 'premio-progress-fill--listo' : ''}`}
+                              style={{ width: `${alcance}%` }}
+                            />
+                          </div>
+                          <span className={`premio-progress-label ${listo ? 'premio-progress-label--listo' : ''}`}>
+                            {listo
+                              ? '¡Listo!'
+                              : `${balance.toLocaleString()} / ${p.puntos_necesarios.toLocaleString()}`}
+                          </span>
+                        </div>
                       </div>
-                      <div className="premio-info">
-                        <p className="premio-nombre">{p.nombre}</p>
-                        {p.descripcion && <p className="premio-desc">{p.descripcion}</p>}
-                      </div>
-                      <div className="premio-pts">{p.puntos_necesarios}pt</div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </>
