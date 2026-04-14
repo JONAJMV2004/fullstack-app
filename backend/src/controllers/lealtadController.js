@@ -3,6 +3,7 @@ const EstanciaModel = require('../models/estanciaModel');
 const PuntosModel = require('../models/puntosModel');
 const PremioModel = require('../models/premioModel');
 const CanjeModel = require('../models/canjeModel');
+const CodigoModel = require('../models/codigoModel');
 
 // ── ESTANCIAS ────────────────────────────────────────────────────────────────
 
@@ -76,19 +77,20 @@ exports.getEstancias = async (req, res) => {
 exports.getPuntos = async (req, res) => {
   try {
     const usuarioId = req.user.id;
-    const [balance, historial, totalCanjes] = await Promise.all([
+    const [balance, historial, canjes, totalCodigos] = await Promise.all([
       PuntosModel.getBalance(usuarioId),
       PuntosModel.getHistory(usuarioId),
-      CanjeModel.countByUsuario(usuarioId),
+      CanjeModel.getByUsuario(usuarioId),
+      CodigoModel.countCanjeadosByUsuario(usuarioId),
     ]);
-    const totalEstancias = await EstanciaModel.getByUsuario(usuarioId);
 
     return res.status(200).json({
       balance,
       historial,
+      canjes,
       resumen: {
-        total_estancias: totalEstancias.length,
-        total_canjes: totalCanjes,
+        total_codigos: totalCodigos,
+        total_canjes: canjes.length,
       },
     });
   } catch (err) {
@@ -215,6 +217,76 @@ exports.getCanjes = async (req, res) => {
   } catch (err) {
     console.error('getCanjes error:', err);
     return res.status(500).json({ error: 'Error al obtener canjes.' });
+  }
+};
+
+// ── CODIGOS ──────────────────────────────────────────────────────────────────
+
+// POST /api/lealtad/codigos/canjear
+exports.canjearCodigo = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const { codigo } = req.body;
+
+    if (!codigo || !String(codigo).trim())
+      return res.status(400).json({ error: 'El código es requerido.' });
+
+    const registro = await CodigoModel.getByCodigo(String(codigo).trim());
+
+    if (!registro)
+      return res.status(404).json({ error: 'Código no encontrado. Verifica que esté escrito correctamente.' });
+
+    if (registro.estatus === 'canjeado')
+      return res.status(409).json({ error: 'Este código ya fue canjeado anteriormente.' });
+
+    const actualizado = await CodigoModel.canjear(registro.id, usuarioId);
+
+    await PuntosModel.addEntry({
+      usuarioId,
+      descripcion: `Estancia en ${registro.ubicacion} (${registro.noches} noche${registro.noches !== 1 ? 's' : ''})`,
+      puntos: registro.puntos,
+    });
+
+    return res.status(200).json({
+      message: `¡Código canjeado! Se te asignaron ${registro.puntos} puntos.`,
+      codigo: actualizado,
+      puntos: registro.puntos,
+    });
+  } catch (err) {
+    console.error('canjearCodigo error:', err);
+    return res.status(500).json({ error: 'Error al canjear el código.' });
+  }
+};
+
+// GET /api/lealtad/codigos
+exports.getCodigosUsuario = async (req, res) => {
+  try {
+    const codigos = await CodigoModel.getByUsuario(req.user.id);
+    return res.status(200).json({ codigos });
+  } catch (err) {
+    console.error('getCodigosUsuario error:', err);
+    return res.status(500).json({ error: 'Error al obtener códigos.' });
+  }
+};
+
+// PATCH /api/lealtad/codigos/:id/resena
+exports.guardarResena = async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+    const { id } = req.params;
+    const { calificacion, comentario } = req.body;
+
+    if (!calificacion || calificacion < 1 || calificacion > 5)
+      return res.status(400).json({ error: 'La calificación debe ser entre 1 y 5.' });
+
+    const actualizado = await CodigoModel.guardarResena(id, usuarioId, { calificacion, comentario });
+    if (!actualizado)
+      return res.status(404).json({ error: 'Estadía no encontrada.' });
+
+    return res.status(200).json({ message: 'Reseña guardada.', codigo: actualizado });
+  } catch (err) {
+    console.error('guardarResena error:', err);
+    return res.status(500).json({ error: 'Error al guardar la reseña.' });
   }
 };
 

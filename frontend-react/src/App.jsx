@@ -20,14 +20,19 @@ import NotificacionesPage from './pages/NotificacionesPage'
 import AdminReportesPage from './pages/admin/AdminReportesPage'
 import AdminUsuariosPage from './pages/admin/AdminUsuariosPage'
 import AdminPuntosPage from './pages/admin/AdminPuntosPage'
-import AdminEstanciasPage from './pages/admin/AdminEstanciasPage'
+import AdminCodigosPage from './pages/admin/AdminCodigosPage'
 import AdminPremiosPage from './pages/admin/AdminPremiosPage'
 import AdminCanjesPage from './pages/admin/AdminCanjesPage'
 import AdminUbicacionesPage from './pages/admin/AdminUbicacionesPage'
+import AdminMarketingPage from './pages/admin/AdminMarketingPage'
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useAuth()
-  if (!isLoggedIn) return <Navigate to="/login" replace />
+  if (!isLoggedIn) {
+    const dest = window.location.pathname + window.location.search
+    if (dest !== '/login') sessionStorage.setItem('pendingRedirect', dest)
+    return <Navigate to="/login" replace />
+  }
   return children
 }
 
@@ -68,10 +73,11 @@ export default function App() {
       <Route path="/admin" element={<AdminRoute><AdminReportesPage /></AdminRoute>} />
       <Route path="/admin/usuarios" element={<AdminRoute><AdminUsuariosPage /></AdminRoute>} />
       <Route path="/admin/puntos" element={<AdminRoute><AdminPuntosPage /></AdminRoute>} />
-      <Route path="/admin/estancias" element={<AdminRoute><AdminEstanciasPage /></AdminRoute>} />
+      <Route path="/admin/codigos" element={<AdminRoute><AdminCodigosPage /></AdminRoute>} />
       <Route path="/admin/premios" element={<AdminRoute><AdminPremiosPage /></AdminRoute>} />
       <Route path="/admin/canjes" element={<AdminRoute><AdminCanjesPage /></AdminRoute>} />
       <Route path="/admin/ubicaciones" element={<AdminRoute><AdminUbicacionesPage /></AdminRoute>} />
+      <Route path="/admin/marketing"   element={<AdminRoute><AdminMarketingPage /></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

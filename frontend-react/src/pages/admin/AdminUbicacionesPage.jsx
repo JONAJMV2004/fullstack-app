@@ -4,7 +4,8 @@ import AdminLayout from '../../components/AdminLayout'
 
 function formatDate(str) {
   if (!str) return '—'
-  return new Date(str).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
+  const s = String(str).substring(0, 10) // asegurar YYYY-MM-DD
+  return new Date(s + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 const ESTADO_CONFIG = {
@@ -21,17 +22,17 @@ function calcNights(checkIn, checkOut) {
 
 function BadgeEstado({ estado }) {
   const map = {
-    aprobado:  { bg: '#c6f6d5', color: '#276749' },
-    pendiente: { bg: '#fefcbf', color: '#744210' },
-    rechazado: { bg: '#fed7d7', color: '#9b2c2c' },
+    canjeado:  { bg: '#c6f6d5', color: '#276749', label: 'Confirmado' },
+    aprobado:  { bg: '#c6f6d5', color: '#276749', label: 'Aprobado' },
+    pendiente: { bg: '#fefcbf', color: '#744210', label: 'Pendiente' },
+    rechazado: { bg: '#fed7d7', color: '#9b2c2c', label: 'Rechazado' },
   }
-  const s = map[estado] || { bg: '#e2e8f0', color: '#4a5568' }
+  const s = map[estado] || { bg: '#e2e8f0', color: '#4a5568', label: estado }
   return (
     <span style={{
       fontSize: '.72rem', fontWeight: 700, borderRadius: 6,
       padding: '2px 8px', background: s.bg, color: s.color,
-      textTransform: 'capitalize'
-    }}>{estado}</span>
+    }}>{s.label}</span>
   )
 }
 
@@ -149,7 +150,8 @@ export default function AdminUbicacionesPage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, padding: '16px 20px' }}>
             {ocupacion.map(ub => {
-              const hoy = new Date().toISOString().split('T')[0]
+              const d = new Date()
+              const hoy = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
               const esDesactivada = !ub.activa
               const estadoKey = esDesactivada ? 'desactivada' : (ub.estado_ocupacion || 'disponible')
               const cfg = ESTADO_CONFIG[estadoKey]
@@ -173,7 +175,7 @@ export default function AdminUbicacionesPage() {
                     <div>
                       <div style={{ fontWeight: 700, fontSize: '1rem', color: '#2d3748' }}>{ub.nombre}</div>
                       <div style={{ fontSize: '.75rem', color: '#718096', marginTop: 2 }}>
-                        {ub.estancias?.length || 0} reserva{ub.estancias?.length !== 1 ? 's' : ''} vigente{ub.estancias?.length !== 1 ? 's' : ''}
+                        {ub.estancias?.length || 0} estadía{ub.estancias?.length !== 1 ? 's' : ''} vigente{ub.estancias?.length !== 1 ? 's' : ''}
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -230,7 +232,7 @@ export default function AdminUbicacionesPage() {
                     {proximas.length > 0 && (
                       <div>
                         <div style={{ fontSize: '.72rem', fontWeight: 700, color: '#d69e2e', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
-                          Próximas reservas ({proximas.length})
+                          Próximas estadías ({proximas.length})
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {proximas.map((e, i) => (

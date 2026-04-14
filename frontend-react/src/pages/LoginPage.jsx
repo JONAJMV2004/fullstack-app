@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import CielitoLogo from '../components/CielitoLogo'
 import Alert from '../components/Alert'
-import { GoogleIcon, FacebookIcon, handleOAuthLogin } from '../components/SocialAuth'
+import { GoogleIcon, FacebookIcon, InstagramIcon, handleOAuthLogin } from '../components/SocialAuth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -37,7 +37,11 @@ export default function LoginPage() {
       }
       saveSession(data.token, data.user)
       setAlert({ message: 'Bienvenido de vuelta.', type: 'success' })
-      const destino = data.user.tipo_usuario === 'admin' ? '/admin/reportes' : '/home'
+      const pending = sessionStorage.getItem('pendingRedirect')
+      sessionStorage.removeItem('pendingRedirect')
+      const destino = data.user.tipo_usuario === 'admin'
+        ? '/admin/reportes'
+        : (pending || '/home')
       setTimeout(() => navigate(destino), 800)
     } catch {
       setAlert({ message: 'Error de conexión. Verifica que el servidor esté activo.', type: 'error' })
@@ -107,6 +111,9 @@ export default function LoginPage() {
           </button>
           <button type="button" className="btn-ch-social" onClick={() => handleOAuthLogin('facebook', setAlert)}>
             <FacebookIcon /> INGRESA CON FACEBOOK
+          </button>
+          <button type="button" className="btn-ch-social" onClick={() => handleOAuthLogin('facebook', setAlert)}>
+            <InstagramIcon /> INGRESA CON INSTAGRAM
           </button>
         </div>
 

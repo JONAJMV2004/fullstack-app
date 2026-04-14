@@ -28,9 +28,9 @@ function formatCardNumber(num) {
 }
 
 function getNivel(balance) {
-  if (balance >= 5000) return { nombre: 'Oro', color: '#D4A017', icon: '★★★' }
-  if (balance >= 1000) return { nombre: 'Plata', color: '#94A3B8', icon: '★★' }
-  return { nombre: 'Bronce', color: '#CD7F32', icon: '★' }
+  if (balance >= 5000) return { nombre: 'ORO',    color: '#C9A84C', icon: '★★★', grad: 'linear-gradient(135deg,#A07830,#E8C97A,#C9A84C,#E8C97A,#A07830)' }
+  if (balance >= 1000) return { nombre: 'PLATA',  color: '#94A3B8', icon: '★★',  grad: 'linear-gradient(135deg,#6B7A8D,#D1D8E0,#94A3B8,#D1D8E0,#6B7A8D)' }
+  return                       { nombre: 'BRONCE', color: '#CD7F32', icon: '★',   grad: 'linear-gradient(135deg,#7B4F22,#CD7F32,#A0622A,#E0A050,#7B4F22)' }
 }
 
 export default function HomePage() {
@@ -43,16 +43,13 @@ export default function HomePage() {
   const [isStandaloneMode, setIsStandaloneMode] = useState(false)
   const [installHelpText, setInstallHelpText] = useState('')
 
-  // Estancia form
-  const [showEstancia, setShowEstancia] = useState(false)
-  const [checkIn, setCheckIn] = useState('')
-  const [checkOut, setCheckOut] = useState('')
-  const [ubicacion, setUbicacion] = useState('')
-  const [ubicaciones, setUbicaciones] = useState([])
-  const [estanciaLoading, setEstanciaLoading] = useState(false)
-  const [estancias, setEstancias] = useState([])
+  // Canjear código
+  const [showCodigo, setShowCodigo] = useState(false)
+  const [codigoInput, setCodigoInput] = useState('')
+  const [codigoLoading, setCodigoLoading] = useState(false)
+  const [codigosCanjeados, setCodigosCanjeados] = useState([])
   const [alert, setAlert] = useState(null)
-  const currentUserId = user?.id || userData?.id
+  const [pendingCodigo, setPendingCodigo] = useState(null)
 
   async function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms))
@@ -98,158 +95,89 @@ export default function HomePage() {
     throw lastError
   }
 
+  // Detectar ?codigo= en la URL al montar
   useEffect(() => {
-    const userAgent = navigator.userAgent || navigator.vendor || ''
-    const isiOS = /iPad|iPhone|iPod/.test(userAgent)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
-    setIsIosDevice(isiOS)
-    setIsStandaloneMode(isStandalone)
-
-    const handleBeforeInstallPrompt = (event) => {
-      event.preventDefault()
-      setPwaPromptEvent(event)
+    const params = new URLSearchParams(window.location.search)
+    const codigoParam = params.get('codigo')
+    if (codigoParam) {
+      window.history.replaceState({}, '', '/home')
+      setPendingCodigo(codigoParam.toUpperCase())
+      setShowCodigo(true)
     }
+  }, [])
 
-    const handleAppInstalled = () => {
-      if (currentUserId) {
-        localStorage.removeItem(PWA_NEW_USER_KEY)
-        localStorage.setItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`, '1')
-        localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
+  async function cargarDatos() {
+    if (!token) return
+    try {
+      const meData = await fetchJsonWithRetry(`${API_BASE}/auth/me`, { headers: authHeaders() })
+      const [puntosData, codigosData] = await Promise.all([
+        fetchJsonWithRetry(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
+        fetchJsonWithRetry(`${API_BASE}/lealtad/codigos`, { headers: authHeaders() }),
+      ])
+      setUserData(meData.user)
+      setBalance(puntosData.balance || 0)
+      setCodigosCanjeados(codigosData.codigos || [])
+    } catch (err) {
+      if (err?.code === 'AUTH') {
+        clearSession()
+        return
       }
-      setShowPwaPrompt(false)
-      setPwaPromptEvent(null)
+      console.error('Error cargando home:', err)
     }
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    window.addEventListener('appinstalled', handleAppInstalled)
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-      window.removeEventListener('appinstalled', handleAppInstalled)
-    }
-  }, [currentUserId])
+  }
 
   useEffect(() => {
-    if (!currentUserId) return
+    cargarDatos()
+  }, [token])
 
-    const pendingForUser = localStorage.getItem(PWA_NEW_USER_KEY)
-    const landingPromptHandled = localStorage.getItem(PWA_LANDING_SEEN_KEY) === '1'
-    const alreadyDismissed = localStorage.getItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`) === '1'
-    const alreadySeenHome = localStorage.getItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`) === '1'
-    const isNewUserPending = pendingForUser === String(currentUserId)
-
-    if (alreadyDismissed) {
-      return
-    }
-
-    if (landingPromptHandled && !isNewUserPending) {
-      localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
-      return
-    }
-
-    if (isStandaloneMode) {
-      localStorage.removeItem(PWA_NEW_USER_KEY)
-      localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
-      return
-    }
-
-    if (!isNewUserPending && alreadySeenHome) {
-      return
-    }
-
-    setShowPwaPrompt(true)
-    localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
-  }, [currentUserId, isStandaloneMode])
-
+  // Auto-canjear cuando hay un código pendiente y el token ya está listo
   useEffect(() => {
-    async function cargarHome() {
-      if (!token) return
-
-      try {
-        const meData = await fetchJsonWithRetry(`${API_BASE}/auth/me`, { headers: authHeaders() })
-        const [puntosData, estData, ubicacionesData] = await Promise.all([
-          fetchJsonWithRetry(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
-          fetchJsonWithRetry(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
-          fetchJsonWithRetry(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
-        ])
-
-        setUserData(meData.user)
-        setBalance(puntosData.balance || 0)
-        setEstancias(estData.estancias || [])
-        setUbicaciones(ubicacionesData.ubicaciones || [])
-      } catch (err) {
-        if (err?.code === 'AUTH') {
-          clearSession()
-          return
+    if (!pendingCodigo || !token) return
+    setPendingCodigo(null)
+    setCodigoLoading(true)
+    setAlert(null)
+    fetch(`${API_BASE}/lealtad/codigos/canjear`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ codigo: pendingCodigo }),
+    })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) {
+          setAlert({ message: data.error || 'Error al canjear el código.', type: 'error' })
+        } else {
+          setAlert({ message: data.message, type: 'success' })
+          cargarDatos()
         }
-        console.error('Error cargando home:', err)
-      }
-    }
-    cargarHome()
-  }, [token, authHeaders, clearSession])
+      })
+      .catch(() => setAlert({ message: 'Error de conexión.', type: 'error' }))
+      .finally(() => setCodigoLoading(false))
+  }, [pendingCodigo, token])
 
-  async function handleInstallPwa() {
-    if (!pwaPromptEvent) {
-      if (isIosDevice) {
-        setInstallHelpText('En iPhone: Safari > Compartir > Agregar a pantalla de inicio.')
-      } else {
-        setInstallHelpText('Si no aparece el instalador, abre el menu del navegador y selecciona Instalar app o Agregar a pantalla de inicio.')
-      }
-      return
-    }
-
-    pwaPromptEvent.prompt()
-    const choice = await pwaPromptEvent.userChoice
-
-    if (choice?.outcome === 'accepted' && currentUserId) {
-      localStorage.removeItem(PWA_NEW_USER_KEY)
-      localStorage.setItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`, '1')
-      localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
-      setShowPwaPrompt(false)
-    }
-
-    setPwaPromptEvent(null)
-  }
-
-  function handleClosePwaPrompt() {
-    if (currentUserId) {
-      localStorage.removeItem(PWA_NEW_USER_KEY)
-      localStorage.setItem(`${PWA_DISMISSED_PREFIX}${currentUserId}`, '1')
-      localStorage.setItem(`${PWA_FIRST_VISIT_PREFIX}${currentUserId}`, '1')
-    }
-    setInstallHelpText('')
-    setShowPwaPrompt(false)
-  }
-
-  async function handleEstanciaSubmit(e) {
+  async function handleCodigoSubmit(e) {
     e.preventDefault()
     setAlert(null)
 
-    if (!ubicacion) {
-      setAlert({ message: 'Selecciona una ubicación.', type: 'error' })
+    if (!codigoInput.trim()) {
+      setAlert({ message: 'Ingresa un código.', type: 'error' })
       return
     }
 
-    setEstanciaLoading(true)
+    setCodigoLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/lealtad/estancias`, {
+      const res = await fetch(`${API_BASE}/lealtad/codigos/canjear`, {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ fecha_check_in: checkIn, fecha_check_out: checkOut, ubicacion }),
+        body: JSON.stringify({ codigo: codigoInput.trim() }),
       })
       const data = await res.json()
-      if (!res.ok) { setAlert({ message: data.error || 'Error al registrar estancia.', type: 'error' }); return }
-      setAlert({ message: '¡Estancia registrada! Pendiente de aprobación por el administrador.', type: 'success' })
-      setCheckIn(''); setCheckOut(''); setUbicacion('')
-      // Reload data
-      const [puntosData, estData, ubicacionesData] = await Promise.all([
-        fetchJsonWithRetry(`${API_BASE}/lealtad/puntos`, { headers: authHeaders() }),
-        fetchJsonWithRetry(`${API_BASE}/lealtad/estancias`, { headers: authHeaders() }),
-        fetchJsonWithRetry(`${API_BASE}/lealtad/ubicaciones`, { headers: authHeaders() }),
-      ])
-      setBalance(puntosData.balance || 0)
-      setEstancias(estData.estancias || [])
-      setUbicaciones(ubicacionesData.ubicaciones || [])
+      if (!res.ok) {
+        setAlert({ message: data.error || 'Error al canjear el código.', type: 'error' })
+        return
+      }
+      setAlert({ message: data.message, type: 'success' })
+      setCodigoInput('')
+      await cargarDatos()
     } catch (err) {
       if (err?.code === 'AUTH') {
         clearSession()
@@ -257,7 +185,7 @@ export default function HomePage() {
       }
       setAlert({ message: 'Error de conexión.', type: 'error' })
     } finally {
-      setEstanciaLoading(false)
+      setCodigoLoading(false)
     }
   }
 
@@ -303,32 +231,90 @@ export default function HomePage() {
         <h1 className="app-section-title">Mi Tarjeta</h1>
 
         {/* ── Tarjeta principal ── */}
-        <div className="tc-card">
-          <div className="tc-card-pattern" />
-          <div className="tc-card-header">
-            <div className="tc-brand">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
-              <span>Cielito Home</span>
+        <div style={{
+          background: 'linear-gradient(135deg, #0d2a18 0%, #1a3d26 50%, #0a1f12 100%)',
+          borderRadius: 20,
+          padding: '22px 22px 18px',
+          marginBottom: 18,
+          position: 'relative',
+          overflow: 'hidden',
+          border: '1px solid rgba(201,168,76,0.25)',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06)',
+        }}>
+          {/* Overlay decorativo */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: 'radial-gradient(circle at 70% 20%, rgba(201,168,76,0.08) 0%, transparent 60%), radial-gradient(circle at 20% 80%, rgba(13,90,50,0.3) 0%, transparent 50%)',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Header: marca + nivel */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(201,168,76,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
+              <span style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: '0.88rem',
+                letterSpacing: '0.08em',
+                background: 'linear-gradient(135deg,#A07830,#E8C97A,#C9A84C)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}>Cielito Home</span>
             </div>
-            <div className="tc-nivel" style={{ background: nivel.color }}>
+            <div style={{
+              background: nivel.grad,
+              borderRadius: 20,
+              padding: '4px 10px',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              color: '#1a0f00',
+              display: 'flex', alignItems: 'center', gap: 4,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            }}>
               <span>{nivel.icon}</span> {nivel.nombre}
             </div>
           </div>
 
-          <div className="tc-chip">
-            <svg width="28" height="20" viewBox="0 0 28 20" fill="none"><rect x="1" y="1" width="26" height="18" rx="3" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/><line x1="10" y1="1" x2="10" y2="19" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/><line x1="18" y1="1" x2="18" y2="19" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/><line x1="1" y1="7" x2="27" y2="7" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/><line x1="1" y1="13" x2="27" y2="13" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/></svg>
+          {/* Chip EMV */}
+          <div style={{ marginBottom: 16, position: 'relative' }}>
+            <svg width="38" height="28" viewBox="0 0 38 28" fill="none">
+              <defs>
+                <linearGradient id="hpChipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#8A959F" />
+                  <stop offset="40%" stopColor="#D1D8E0" />
+                  <stop offset="100%" stopColor="#8A959F" />
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="36" height="26" rx="4" fill="url(#hpChipGrad)" stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" />
+              <line x1="13" y1="1" x2="13" y2="27" stroke="rgba(0,0,0,0.15)" strokeWidth="0.8"/>
+              <line x1="25" y1="1" x2="25" y2="27" stroke="rgba(0,0,0,0.15)" strokeWidth="0.8"/>
+              <line x1="1" y1="9"  x2="37" y2="9"  stroke="rgba(0,0,0,0.15)" strokeWidth="0.8"/>
+              <line x1="1" y1="19" x2="37" y2="19" stroke="rgba(0,0,0,0.15)" strokeWidth="0.8"/>
+              <rect x="14" y="10" width="10" height="8" rx="1" fill="rgba(0,0,0,0.12)" />
+            </svg>
           </div>
 
-          <p className="tc-number">{formatCardNumber(numTarjeta)}</p>
+          {/* Número de tarjeta */}
+          <p style={{
+            fontFamily: 'Georgia, "Courier New", monospace',
+            fontSize: '1.15rem',
+            letterSpacing: '0.25em',
+            color: 'rgba(255,255,255,0.9)',
+            margin: '0 0 18px',
+            textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+            position: 'relative',
+          }}>{formatCardNumber(numTarjeta)}</p>
 
-          <div className="tc-card-footer">
+          {/* Footer */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
             <div>
-              <p className="tc-footer-label">Titular</p>
-              <p className="tc-footer-value">{nombre.toUpperCase()}</p>
+              <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Titular</div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.06em' }}>{nombre.toUpperCase()}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <p className="tc-footer-label">Membresía</p>
-              <p className="tc-footer-value">{membresia}</p>
+              <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Membresía</div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.06em' }}>{membresia}</div>
             </div>
           </div>
         </div>
@@ -357,27 +343,26 @@ export default function HomePage() {
 
         <Link to="/recompensas" className="btn-ch-primary home-canjear-btn">Canjear Puntos</Link>
 
-        {/* ── Registrar Estancia ── */}
+        {/* ── Canjear Código ── */}
         <div className="booking-section">
 
-          {/* Header toggle */}
-          <button className="booking-toggle" onClick={() => setShowEstancia(!showEstancia)}>
+          <button className="booking-toggle" onClick={() => { setShowCodigo(!showCodigo); setAlert(null) }}>
             <div className="booking-toggle-left">
               <div className="booking-toggle-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </div>
               <div>
-                <div className="booking-toggle-title">Registrar Estancia</div>
-                <div className="booking-toggle-sub">Acumula puntos por tu estadía</div>
+                <div className="booking-toggle-title">Canjear Código</div>
+                <div className="booking-toggle-sub">Ingresa el código de tu estadía para acumular puntos</div>
               </div>
             </div>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ transition: 'transform .25s', transform: showEstancia ? 'rotate(180deg)' : 'rotate(0)', flexShrink: 0, color: '#2D6A50' }}>
+              style={{ transition: 'transform .25s', transform: showCodigo ? 'rotate(180deg)' : 'rotate(0)', flexShrink: 0, color: '#2D6A50' }}>
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </button>
 
-          {showEstancia && (
+          {showCodigo && (
             <div className="booking-body">
 
               {alert && (
@@ -390,93 +375,36 @@ export default function HomePage() {
                 </div>
               )}
 
-              <form className="booking-form" onSubmit={handleEstanciaSubmit} noValidate>
-
-                {/* Ubicación */}
+              <form className="booking-form" onSubmit={handleCodigoSubmit} noValidate>
                 <div className="booking-field-group">
                   <div className="booking-field-label">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                    Ubicación
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Código de estadía
                   </div>
-                  {ubicaciones.length === 0 ? (
-                    <p className="booking-no-locations">No hay ubicaciones disponibles.</p>
-                  ) : (
-                    <div className="booking-location-grid">
-                      {ubicaciones.map((u) => (
-                        <button
-                          key={u}
-                          type="button"
-                          className={`booking-location-btn${ubicacion === u ? ' selected' : ''}`}
-                          onClick={() => setUbicacion(ubicacion === u ? '' : u)}
-                        >
-                          {ubicacion === u && (
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          )}
-                          {u}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <input
+                    style={{
+                      width: '100%', padding: '12px 14px', borderRadius: 10,
+                      border: '1.5px solid rgba(255,255,255,0.1)',
+                      fontSize: 16, fontWeight: 600,
+                      letterSpacing: 2, textTransform: 'uppercase', outline: 'none',
+                      boxSizing: 'border-box',
+                      background: '#0f2a1a',
+                      color: 'rgba(255,255,255,0.85)',
+                    }}
+                    type="text"
+                    placeholder="Ej: CIELITO2025"
+                    value={codigoInput}
+                    onChange={(e) => setCodigoInput(e.target.value.toUpperCase())}
+                    maxLength={30}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                  />
                 </div>
 
-                {/* Fechas */}
-                <div className="booking-dates-card">
-                  <div className="booking-date-block">
-                    <div className="booking-date-label">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                      Llegada
-                    </div>
-                    <input
-                      className="booking-date-input"
-                      type="date"
-                      value={checkIn}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => { setCheckIn(e.target.value); if (checkOut && e.target.value >= checkOut) setCheckOut('') }}
-                      required
-                    />
-                    {checkIn && <div className="booking-date-display">{new Date(checkIn + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}</div>}
-                  </div>
-
-                  <div className="booking-dates-divider">
-                    {checkIn && checkOut ? (
-                      <div className="booking-nights-badge">
-                        {Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)}
-                        <span>noche{Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000) !== 1 ? 's' : ''}</span>
-                      </div>
-                    ) : (
-                      <div className="booking-dates-arrow">→</div>
-                    )}
-                  </div>
-
-                  <div className="booking-date-block">
-                    <div className="booking-date-label">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                      Salida
-                    </div>
-                    <input
-                      className="booking-date-input"
-                      type="date"
-                      value={checkOut}
-                      min={checkIn || new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setCheckOut(e.target.value)}
-                      required
-                    />
-                    {checkOut && <div className="booking-date-display">{new Date(checkOut + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })}</div>}
-                  </div>
-                </div>
-
-                {/* Resumen */}
-                {ubicacion && checkIn && checkOut && (
-                  <div className="booking-summary">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-                    <span><strong>{ubicacion}</strong> · {Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000)} noche{Math.round((new Date(checkOut) - new Date(checkIn)) / 86400000) !== 1 ? 's' : ''}</span>
-                  </div>
-                )}
-
-                <button type="submit" className="booking-submit" disabled={estanciaLoading || !ubicacion || !checkIn || !checkOut}>
-                  {estanciaLoading
-                    ? <><span className="booking-spinner"/><span>Registrando...</span></>
-                    : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>Confirmar Reserva</span></>
+                <button type="submit" className="booking-submit" disabled={codigoLoading || !codigoInput.trim()}>
+                  {codigoLoading
+                    ? <><span className="booking-spinner"/><span>Validando...</span></>
+                    : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Canjear Código</span></>
                   }
                 </button>
               </form>
@@ -485,29 +413,29 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Historial de reservas — siempre visible */}
-        {estancias.length > 0 && (
+        {/* ── Historial de códigos canjeados ── */}
+        {codigosCanjeados.length > 0 && (
           <div className="booking-history">
-            <div className="booking-history-title">Mis reservas</div>
-            {estancias.map((est, i) => {
-              const noches = Math.round((new Date(est.fecha_check_out) - new Date(est.fecha_check_in)) / 86400000)
+            <div className="booking-history-title">Mis estadías</div>
+            {codigosCanjeados.map((c, i) => {
+              const noches = c.noches
               return (
                 <div key={i} className="booking-history-item">
                   <div className="booking-history-icon">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
                   </div>
                   <div className="booking-history-info">
-                    <div className="booking-history-loc">{est.ubicacion || 'Sin ubicación'}</div>
+                    <div className="booking-history-loc">{c.ubicacion}</div>
                     <div className="booking-history-dates">
-                      {new Date(est.fecha_check_in + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                      {new Date(c.fecha_ingreso + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
                       {' → '}
-                      {new Date(est.fecha_check_out + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {new Date(c.fecha_salida + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
                       <span className="booking-history-nights">· {noches} noche{noches !== 1 ? 's' : ''}</span>
                     </div>
                   </div>
                   <div className="booking-history-right">
-                    <span className={`home-estancia-badge ${est.estado || 'pendiente'}`}>{est.estado || 'pendiente'}</span>
-                    {est.puntos_ganados > 0 && <span className="home-estancia-pts">+{est.puntos_ganados} pts</span>}
+                    <span className="home-estancia-badge confirmada">canjeado</span>
+                    {c.puntos > 0 && <span className="home-estancia-pts">+{c.puntos} pts</span>}
                   </div>
                 </div>
               )
