@@ -4,7 +4,6 @@ import { useAuth, API_BASE } from '../context/AuthContext'
 import CielitoLogo from '../components/CielitoLogo'
 import Alert from '../components/Alert'
 import { GoogleIcon, FacebookIcon, InstagramIcon, handleOAuthLogin } from '../components/SocialAuth'
-import { GoogleIcon, FacebookIcon, handleOAuthLogin } from '../components/SocialAuth'
 
 const PWA_NEW_USER_KEY = 'pwa_prompt_new_user'
 
