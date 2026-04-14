@@ -5,7 +5,10 @@
       "Bash(curl -s -X POST http://localhost:5000/api/auth/register -H \"Content-Type: application/json\" -d '{\"\"nombre\"\":\"\"Test Admin\"\",\"\"email\"\":\"\"admin_test@cielito.com\"\",\"\"password\"\":\"\"test123\"\"}')",
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(powershell.exe -Command \"node --version; npm --version\")",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(npm run:*)"
     ]
   }
 }
