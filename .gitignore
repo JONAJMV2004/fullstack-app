@@ -1,0 +1,5 @@
+# Frontend build artifacts
+frontend-react/dist/
+
+# Frontend dependencies
+frontend-react/node_modules/

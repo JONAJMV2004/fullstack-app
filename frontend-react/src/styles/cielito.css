@@ -866,6 +866,37 @@ body {
 
 .modal-confirm-btn { width: auto; padding: 10px 20px; font-size: 0.9rem; }
 
+.pwa-modal-card {
+  max-width: 360px;
+}
+
+.pwa-modal-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #eef7f2;
+  color: #2D6A50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.pwa-modal-actions {
+  justify-content: space-between;
+}
+
+.pwa-install-note {
+  margin: -8px 0 14px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #2D6A50;
+  background: #eef7f2;
+  border: 1px solid #d7ecdf;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
 .modal-ubicacion-section {
   margin-bottom: 18px;
 }

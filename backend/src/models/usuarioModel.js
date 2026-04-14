@@ -68,7 +68,7 @@ const UsuarioModel = {
       .single();
 
       if (error) throw error;
-      return data;
+      return { user: data, isNewUser: false };
     }
 
     const { data, error } = await supabaseAdmin
@@ -85,7 +85,7 @@ const UsuarioModel = {
       .single();
       
     if (error) throw error;
-    return data;
+    return { user: data, isNewUser: true };
   },
 
   async update(id, fields) {
