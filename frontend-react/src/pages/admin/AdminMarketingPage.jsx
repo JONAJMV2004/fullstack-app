@@ -2,12 +2,25 @@ import { useState, useEffect } from 'react'
 import { useAuth, API_BASE } from '../../context/AuthContext'
 import AdminLayout from '../../components/AdminLayout'
 
+// Convierte links de Google Drive al formato de imagen directa
+function convertirUrlImagen(url) {
+  if (!url) return url
+  // https://drive.google.com/file/d/FILE_ID/view...
+  const matchFile = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)
+  if (matchFile) return `https://drive.google.com/uc?export=view&id=${matchFile[1]}`
+  // https://drive.google.com/open?id=FILE_ID
+  const matchOpen = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/)
+  if (matchOpen) return `https://drive.google.com/uc?export=view&id=${matchOpen[1]}`
+  return url
+}
+
 export default function AdminMarketingPage() {
   const { authHeaders } = useAuth()
   const [form, setForm] = useState({ asunto: '', mensaje: '', imagenUrl: '' })
   const [loading, setLoading] = useState(false)
   const [alert, setAlert] = useState(null)
   const [totalClientes, setTotalClientes] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
   const [imgError, setImgError] = useState(false)
 
   // Cargar total de clientes al montar
@@ -24,7 +37,10 @@ export default function AdminMarketingPage() {
   function handleChange(e) {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
-    if (name === 'imagenUrl') setImgError(false)
+    if (name === 'imagenUrl') {
+      setImgError(false)
+      setPreviewUrl(convertirUrlImagen(value.trim()))
+    }
   }
 
   async function handleEnviar(e) {
@@ -44,7 +60,7 @@ export default function AdminMarketingPage() {
         body: JSON.stringify({
           asunto: form.asunto.trim(),
           mensaje: form.mensaje.trim(),
-          imagenUrl: form.imagenUrl.trim() || null,
+          imagenUrl: previewUrl || null,
         }),
       })
       const data = await res.json()
@@ -106,11 +122,12 @@ export default function AdminMarketingPage() {
                 value={form.imagenUrl}
                 onChange={handleChange}
                 placeholder="https://..."
-                type="url"
+                type="text"
               />
-              {form.imagenUrl && !imgError && (
+              {previewUrl && !imgError && (
                 <img
-                  src={form.imagenUrl}
+                  key={previewUrl}
+                  src={previewUrl}
                   alt="preview"
                   onError={() => setImgError(true)}
                   style={{
@@ -191,9 +208,10 @@ export default function AdminMarketingPage() {
             {/* Body */}
             <div style={{ padding: '24px 28px', background: '#fff' }}>
               {/* Imagen */}
-              {form.imagenUrl && !imgError && (
+              {previewUrl && !imgError && (
                 <img
-                  src={form.imagenUrl}
+                  key={previewUrl}
+                  src={previewUrl}
                   alt="promo"
                   onError={() => setImgError(true)}
                   style={{ width: '100%', borderRadius: 8, marginBottom: 16, display: 'block' }}
