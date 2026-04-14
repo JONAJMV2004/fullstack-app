@@ -1,8 +1,10 @@
-const { supabaseAdmin } = require('../config/supabase');
+﻿const { supabaseAdmin } = require('../config/supabase');
 const bcrypt = require('bcryptjs');
 const CodigoModel = require('../models/codigoModel');
 const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing } = require('../config/mailer');
 
+const SALT_ROUNDS = 12;
+const MIN_PASSWORD_LENGTH = 8;
 const STORAGE_BUCKET_PREMIOS = process.env.SUPABASE_STORAGE_BUCKET_PREMIOS || 'premios';
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -32,18 +34,21 @@ function extractStoragePath(publicUrl) {
   return publicUrl.slice(markerIndex + marker.length);
 }
 
-// ── Usuarios ──────────────────────────────────────────────────────────────────
+// â”€â”€ Usuarios â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getUsuarios = async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    const offset = parseInt(req.query.offset, 10) || 0;
+    const { data, error, count } = await supabaseAdmin
       .from('usuarios')
-      .select('id, nombre, email, tipo_usuario, provider, fecha_registro, avatar_url')
-      .order('fecha_registro', { ascending: false });
+      .select('id, nombre, email, tipo_usuario, provider, fecha_registro, avatar_url', { count: 'exact' })
+      .order('fecha_registro', { ascending: false })
+      .range(offset, offset + limit - 1);
     if (error) throw error;
-    return res.json({ usuarios: data });
+    return res.json({ usuarios: data, total: count });
   } catch (err) {
-    console.error('Admin getUsuarios:', err);
+    console.error('Admin getUsuarios:', err.message);
     return res.status(500).json({ error: 'Error al obtener usuarios.' });
   }
 };
@@ -55,7 +60,7 @@ exports.deleteUsuario = async (req, res) => {
     if (error) throw error;
     return res.json({ message: 'Usuario eliminado.' });
   } catch (err) {
-    console.error('Admin deleteUsuario:', err);
+    console.error('Admin deleteUsuario:', err.message);
     return res.status(500).json({ error: 'Error al eliminar usuario.' });
   }
 };
@@ -68,7 +73,7 @@ exports.updateUsuario = async (req, res) => {
     if (tipo_usuario !== undefined) {
       const roles = ['cliente', 'admin', 'staff'];
       if (!roles.includes(tipo_usuario))
-        return res.status(400).json({ error: 'Rol inválido.' });
+        return res.status(400).json({ error: 'Rol invÃ¡lido.' });
       updates.tipo_usuario = tipo_usuario;
     }
     if (nombre !== undefined) updates.nombre = nombre.trim();
@@ -84,7 +89,7 @@ exports.updateUsuario = async (req, res) => {
     if (error) throw error;
     return res.json({ message: 'Usuario actualizado.', usuario: data });
   } catch (err) {
-    console.error('Admin updateUsuario:', err);
+    console.error('Admin updateUsuario:', err.message);
     return res.status(500).json({ error: 'Error al actualizar usuario.' });
   }
 };
@@ -93,10 +98,10 @@ exports.cambiarPasswordUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     const { nueva_password } = req.body;
-    if (!nueva_password || nueva_password.length < 6)
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+    if (!nueva_password || nueva_password.length < MIN_PASSWORD_LENGTH)
+      return res.status(400).json({ error: `La contraseÃ±a debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.` });
 
-    const hash = await bcrypt.hash(nueva_password, 10);
+    const hash = await bcrypt.hash(nueva_password, SALT_ROUNDS);
 
     const { error } = await supabaseAdmin
       .from('usuarios')
@@ -104,14 +109,14 @@ exports.cambiarPasswordUsuario = async (req, res) => {
       .eq('id', id);
     if (error) throw error;
 
-    return res.json({ message: 'Contraseña actualizada correctamente.' });
+    return res.json({ message: 'ContraseÃ±a actualizada correctamente.' });
   } catch (err) {
-    console.error('Admin cambiarPasswordUsuario:', err);
-    return res.status(500).json({ error: 'Error al cambiar contraseña.' });
+    console.error('Admin cambiarPasswordUsuario:', err.message);
+    return res.status(500).json({ error: 'Error al cambiar contraseÃ±a.' });
   }
 };
 
-// ── Puntos ────────────────────────────────────────────────────────────────────
+// â”€â”€ Puntos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getPuntos = async (req, res) => {
   try {
@@ -123,7 +128,7 @@ exports.getPuntos = async (req, res) => {
     if (error) throw error;
     return res.json({ puntos: data });
   } catch (err) {
-    console.error('Admin getPuntos:', err);
+    console.error('Admin getPuntos:', err.message);
     return res.status(500).json({ error: 'Error al obtener puntos.' });
   }
 };
@@ -142,23 +147,26 @@ exports.ajustarPuntos = async (req, res) => {
     if (error) throw error;
     return res.status(201).json({ message: 'Puntos ajustados.', entry: data });
   } catch (err) {
-    console.error('Admin ajustarPuntos:', err);
+    console.error('Admin ajustarPuntos:', err.message);
     return res.status(500).json({ error: 'Error al ajustar puntos.' });
   }
 };
 
-// ── Estancias ─────────────────────────────────────────────────────────────────
+// â”€â”€ Estancias â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getEstancias = async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    const offset = parseInt(req.query.offset, 10) || 0;
+    const { data, error, count } = await supabaseAdmin
       .from('estancias')
-      .select('*, usuarios(nombre, email)')
-      .order('fecha_check_in', { ascending: false });
+      .select('*, usuarios(nombre, email)', { count: 'exact' })
+      .order('fecha_check_in', { ascending: false })
+      .range(offset, offset + limit - 1);
     if (error) throw error;
-    return res.json({ estancias: data });
+    return res.json({ estancias: data, total: count });
   } catch (err) {
-    console.error('Admin getEstancias:', err);
+    console.error('Admin getEstancias:', err.message);
     return res.status(500).json({ error: 'Error al obtener estancias.' });
   }
 };
@@ -200,7 +208,7 @@ exports.updateEstancia = async (req, res) => {
         .from('puntos')
         .insert([{
           usuario_id: current.usuario_id,
-          descripcion: `Estancia ${checkIn} – ${checkOut}`,
+          descripcion: `Estancia ${checkIn} â€“ ${checkOut}`,
           puntos: puntosFinales,
         }]);
 
@@ -211,7 +219,7 @@ exports.updateEstancia = async (req, res) => {
           nombre: current.usuarios.nombre || 'Huesped',
           checkIn,
           checkOut,
-          noches: current.noches ?? '—',
+          noches: current.noches ?? 'â€”',
           puntos: puntosFinales,
         }).catch(err => console.error('Error enviando correo estancia:', err));
       }
@@ -219,12 +227,12 @@ exports.updateEstancia = async (req, res) => {
 
     return res.json({ message: 'Estancia actualizada.', estancia: data });
   } catch (err) {
-    console.error('Admin updateEstancia:', err);
+    console.error('Admin updateEstancia:', err.message);
     return res.status(500).json({ error: 'Error al actualizar estancia.' });
   }
 };
 
-// ── Premios ───────────────────────────────────────────────────────────────────
+// â”€â”€ Premios â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getPremios = async (req, res) => {
   try {
@@ -235,7 +243,7 @@ exports.getPremios = async (req, res) => {
     if (error) throw error;
     return res.json({ premios: data || [] });
   } catch (err) {
-    console.error('Admin getPremios:', err);
+    console.error('Admin getPremios:', err.message);
     return res.status(500).json({ error: 'Error al obtener premios.' });
   }
 };
@@ -263,7 +271,7 @@ exports.createPremio = async (req, res) => {
     if (error) throw error;
     return res.status(201).json({ message: 'Premio creado.', premio: data });
   } catch (err) {
-    console.error('Admin createPremio:', err);
+    console.error('Admin createPremio:', err.message);
     return res.status(500).json({ error: 'Error al crear premio.' });
   }
 };
@@ -288,7 +296,7 @@ exports.updatePremio = async (req, res) => {
     if (error) throw error;
     return res.json({ message: 'Premio actualizado.', premio: data });
   } catch (err) {
-    console.error('Admin updatePremio:', err);
+    console.error('Admin updatePremio:', err.message);
     return res.status(500).json({ error: 'Error al actualizar premio.' });
   }
 };
@@ -296,7 +304,7 @@ exports.updatePremio = async (req, res) => {
 exports.subirImagenPremio = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!req.file) return res.status(400).json({ error: 'No se recibió ninguna imagen.' });
+    if (!req.file) return res.status(400).json({ error: 'No se recibiÃ³ ninguna imagen.' });
 
     if (!ALLOWED_IMAGE_MIME_TYPES.includes(req.file.mimetype)) {
       return res.status(400).json({ error: 'Formato no permitido. Usa JPG, PNG, GIF o WebP.' });
@@ -338,7 +346,7 @@ exports.subirImagenPremio = async (req, res) => {
 
     return res.json({ message: 'Imagen subida correctamente.', premio: data, imagen_url });
   } catch (err) {
-    console.error('Admin subirImagenPremio:', err);
+    console.error('Admin subirImagenPremio:', err.message);
     return res.status(500).json({ error: 'Error al subir la imagen.' });
   }
 };
@@ -363,23 +371,26 @@ exports.deletePremio = async (req, res) => {
 
     return res.json({ message: 'Premio eliminado.' });
   } catch (err) {
-    console.error('Admin deletePremio:', err);
+    console.error('Admin deletePremio:', err.message);
     return res.status(500).json({ error: 'Error al eliminar premio.' });
   }
 };
 
-// ── Canjes ────────────────────────────────────────────────────────────────────
+// â”€â”€ Canjes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getCanjes = async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    const offset = parseInt(req.query.offset, 10) || 0;
+    const { data, error, count } = await supabaseAdmin
       .from('canjes')
-      .select('*, usuarios(nombre, email), premios(nombre, categoria)')
-      .order('fecha', { ascending: false });
+      .select('*, usuarios(nombre, email), premios(nombre, categoria)', { count: 'exact' })
+      .order('fecha', { ascending: false })
+      .range(offset, offset + limit - 1);
     if (error) throw error;
-    return res.json({ canjes: data });
+    return res.json({ canjes: data, total: count });
   } catch (err) {
-    console.error('Admin getCanjes:', err);
+    console.error('Admin getCanjes:', err.message);
     return res.status(500).json({ error: 'Error al obtener canjes.' });
   }
 };
@@ -390,7 +401,7 @@ exports.updateCanje = async (req, res) => {
     const { estado } = req.body;
     const estadosValidos = ['aprobado', 'rechazado', 'pendiente'];
     if (!estadosValidos.includes(estado))
-      return res.status(400).json({ error: 'Estado inválido.' });
+      return res.status(400).json({ error: 'Estado invÃ¡lido.' });
 
     const { data, error } = await supabaseAdmin
       .from('canjes')
@@ -412,7 +423,7 @@ exports.updateCanje = async (req, res) => {
 
     return res.json({ message: 'Canje actualizado.', canje: data });
   } catch (err) {
-    console.error('Admin updateCanje:', err);
+    console.error('Admin updateCanje:', err.message);
     return res.status(500).json({ error: 'Error al actualizar canje.' });
   }
 };
@@ -428,15 +439,15 @@ exports.validarCanje = async (req, res) => {
       .eq('codigo_unico', codigo.trim().toUpperCase())
       .single();
 
-    if (error || !canje) return res.status(404).json({ error: 'Código no encontrado.' });
+    if (error || !canje) return res.status(404).json({ error: 'CÃ³digo no encontrado.' });
 
     const expiracion = new Date(canje.fecha);
     expiracion.setDate(expiracion.getDate() + 30);
     if (new Date() > expiracion)
-      return res.status(410).json({ error: 'Código expirado.', canje });
+      return res.status(410).json({ error: 'CÃ³digo expirado.', canje });
 
     if (canje.estado === 'aprobado')
-      return res.status(409).json({ error: 'Código ya fue usado.', canje });
+      return res.status(409).json({ error: 'CÃ³digo ya fue usado.', canje });
 
     const { data: updated, error: updateErr } = await supabaseAdmin
       .from('canjes')
@@ -446,14 +457,14 @@ exports.validarCanje = async (req, res) => {
       .single();
     if (updateErr) throw updateErr;
 
-    return res.json({ message: 'Código validado exitosamente.', canje: updated });
+    return res.json({ message: 'CÃ³digo validado exitosamente.', canje: updated });
   } catch (err) {
-    console.error('Admin validarCanje:', err);
-    return res.status(500).json({ error: 'Error al validar código.' });
+    console.error('Admin validarCanje:', err.message);
+    return res.status(500).json({ error: 'Error al validar cÃ³digo.' });
   }
 };
 
-// ── Reportes ──────────────────────────────────────────────────────────────────
+// â”€â”€ Reportes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getReportes = async (req, res) => {
   try {
@@ -484,12 +495,12 @@ exports.getReportes = async (req, res) => {
       puntosCanjeados,
     });
   } catch (err) {
-    console.error('Admin getReportes:', err);
+    console.error('Admin getReportes:', err.message);
     return res.status(500).json({ error: 'Error al obtener reportes.' });
   }
 };
 
-// ── Ubicaciones ──────────────────────────────────────────────────────────────────
+// â”€â”€ Ubicaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getOcupacion = async (req, res) => {
   try {
@@ -514,7 +525,7 @@ exports.getOcupacion = async (req, res) => {
         c => (c.ubicacion || '').toLowerCase() === ub.nombre.toLowerCase()
       );
 
-      // Normalizar a YYYY-MM-DD para comparación segura sin problemas de timezone
+      // Normalizar a YYYY-MM-DD para comparaciÃ³n segura sin problemas de timezone
       const norm = (d) => String(d || '').substring(0, 10);
 
       const actual = codigosUb.find(
@@ -547,8 +558,8 @@ exports.getOcupacion = async (req, res) => {
 
     return res.json({ ubicaciones: resultado });
   } catch (err) {
-    console.error('Admin getOcupacion:', err);
-    return res.status(500).json({ error: 'Error al obtener ocupación.' });
+    console.error('Admin getOcupacion:', err.message);
+    return res.status(500).json({ error: 'Error al obtener ocupaciÃ³n.' });
   }
 };
 
@@ -561,7 +572,7 @@ exports.getUbicaciones = async (req, res) => {
     if (error) throw error;
     return res.json({ ubicaciones: data || [] });
   } catch (err) {
-    console.error('Admin getUbicaciones:', err);
+    console.error('Admin getUbicaciones:', err.message);
     return res.status(500).json({ error: 'Error al obtener ubicaciones.' });
   }
 };
@@ -578,10 +589,10 @@ exports.createUbicacion = async (req, res) => {
       .select('id, nombre, activa')
       .single();
     if (error) throw error;
-    return res.status(201).json({ message: 'Ubicación creada.', ubicacion: data });
+    return res.status(201).json({ message: 'UbicaciÃ³n creada.', ubicacion: data });
   } catch (err) {
-    console.error('Admin createUbicacion:', err);
-    return res.status(500).json({ error: 'Error al crear ubicación.' });
+    console.error('Admin createUbicacion:', err.message);
+    return res.status(500).json({ error: 'Error al crear ubicaciÃ³n.' });
   }
 };
 
@@ -602,10 +613,10 @@ exports.updateUbicacion = async (req, res) => {
       .select('id, nombre, activa')
       .single();
     if (error) throw error;
-    return res.json({ message: 'Ubicación actualizada.', ubicacion: data });
+    return res.json({ message: 'UbicaciÃ³n actualizada.', ubicacion: data });
   } catch (err) {
-    console.error('Admin updateUbicacion:', err);
-    return res.status(500).json({ error: 'Error al actualizar ubicación.' });
+    console.error('Admin updateUbicacion:', err.message);
+    return res.status(500).json({ error: 'Error al actualizar ubicaciÃ³n.' });
   }
 };
 
@@ -614,14 +625,14 @@ exports.deleteUbicacion = async (req, res) => {
     const { id } = req.params;
     const { error } = await supabaseAdmin.from('ubicaciones').delete().eq('id', id);
     if (error) throw error;
-    return res.json({ message: 'Ubicación eliminada.' });
+    return res.json({ message: 'UbicaciÃ³n eliminada.' });
   } catch (err) {
-    console.error('Admin deleteUbicacion:', err);
-    return res.status(500).json({ error: 'Error al eliminar ubicación.' });
+    console.error('Admin deleteUbicacion:', err.message);
+    return res.status(500).json({ error: 'Error al eliminar ubicaciÃ³n.' });
   }
 };
 
-// ── Analítica de Puntos ───────────────────────────────────────────────────────
+// â”€â”€ AnalÃ­tica de Puntos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getAnalitica = async (req, res) => {
   try {
@@ -649,14 +660,14 @@ exports.getAnalitica = async (req, res) => {
     const puntosMes  = mes ? puntos.filter(p  => String(p.fecha        || '').startsWith(mes)) : puntos;
     const codigosMes = mes ? codigosTodos.filter(c => String(c.fecha_ingreso || '').startsWith(mes)) : codigosTodos;
 
-    // ── Top usuarios por puntos ganados (desde codigos canjeados) ──
+    // â”€â”€ Top usuarios por puntos ganados (desde codigos canjeados) â”€â”€
     const mapaUsuarios = {};
     codigosTodos.filter(c => c.usuario_id).forEach(c => {
       const id = c.usuario_id;
       if (!mapaUsuarios[id]) {
         mapaUsuarios[id] = {
           nombre: c.usuarios?.nombre || `Usuario ${id}`,
-          email:  c.usuarios?.email  || '—',
+          email:  c.usuarios?.email  || 'â€”',
           total:  0,
           movimientos: 0,
         };
@@ -666,10 +677,10 @@ exports.getAnalitica = async (req, res) => {
     });
     const topUsuarios = Object.values(mapaUsuarios).sort((a, b) => b.total - a.total).slice(0, 10);
 
-    // ── Estadías por ubicación en el mes ──
+    // â”€â”€ EstadÃ­as por ubicaciÃ³n en el mes â”€â”€
     const mapaUbicaciones = {};
     codigosMes.forEach(c => {
-      const ub = c.ubicacion || 'Sin ubicación';
+      const ub = c.ubicacion || 'Sin ubicaciÃ³n';
       if (!mapaUbicaciones[ub]) mapaUbicaciones[ub] = { ubicacion: ub, estadias: 0, noches: 0, puntos: 0 };
       mapaUbicaciones[ub].estadias++;
       mapaUbicaciones[ub].noches  += c.noches || 0;
@@ -677,10 +688,10 @@ exports.getAnalitica = async (req, res) => {
     });
     const ubicacionesMes = Object.values(mapaUbicaciones).sort((a, b) => b.estadias - a.estadias);
 
-    // ── Puntos asignados en el mes con detalle ──
+    // â”€â”€ Puntos asignados en el mes con detalle â”€â”€
     const asignadosMes = puntosMes.filter(p => p.puntos > 0).slice(0, 100);
 
-    // ── Tendencia mensual últimos 6 meses ──
+    // â”€â”€ Tendencia mensual Ãºltimos 6 meses â”€â”€
     const tendencia = {};
     const ahora = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -697,7 +708,7 @@ exports.getAnalitica = async (req, res) => {
       }
     });
 
-    // ── Resumen general ──
+    // â”€â”€ Resumen general â”€â”€
     const totalEmitidos  = puntos.filter(p => p.puntos > 0).reduce((s, p) => s + p.puntos, 0);
     const totalCanjeados = Math.abs(puntos.filter(p => p.puntos < 0).reduce((s, p) => s + p.puntos, 0));
 
@@ -709,20 +720,20 @@ exports.getAnalitica = async (req, res) => {
       resumen: { totalEmitidos, totalCanjeados, estadiasMes: codigosMes.length, puntosMes: asignadosMes.reduce((s, p) => s + p.puntos, 0) },
     });
   } catch (err) {
-    console.error('Admin getAnalitica:', err);
-    return res.status(500).json({ error: 'Error al obtener analítica.' });
+    console.error('Admin getAnalitica:', err.message);
+    return res.status(500).json({ error: 'Error al obtener analÃ­tica.' });
   }
 };
 
-// ── Códigos ──────────────────────────────────────────────────────────────────
+// â”€â”€ CÃ³digos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 exports.getCodigos = async (req, res) => {
   try {
     const codigos = await CodigoModel.getAll();
     return res.json({ codigos });
   } catch (err) {
-    console.error('Admin getCodigos:', err);
-    return res.status(500).json({ error: 'Error al obtener códigos.' });
+    console.error('Admin getCodigos:', err.message);
+    return res.status(500).json({ error: 'Error al obtener cÃ³digos.' });
   }
 };
 
@@ -747,12 +758,12 @@ exports.createCodigo = async (req, res) => {
       noches,
       puntos,
     });
-    return res.status(201).json({ message: 'Código creado.', codigo: nuevo });
+    return res.status(201).json({ message: 'CÃ³digo creado.', codigo: nuevo });
   } catch (err) {
-    console.error('Admin createCodigo:', err);
+    console.error('Admin createCodigo:', err.message);
     if (err.code === '23505')
-      return res.status(409).json({ error: 'Ya existe un código con ese nombre.' });
-    return res.status(500).json({ error: 'Error al crear código.' });
+      return res.status(409).json({ error: 'Ya existe un cÃ³digo con ese nombre.' });
+    return res.status(500).json({ error: 'Error al crear cÃ³digo.' });
   }
 };
 
@@ -760,7 +771,7 @@ exports.deleteCodigo = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // No permitir eliminar un código ya canjeado
+    // No permitir eliminar un cÃ³digo ya canjeado
     const { data: existente } = await supabaseAdmin
       .from('codigos')
       .select('estatus')
@@ -768,17 +779,17 @@ exports.deleteCodigo = async (req, res) => {
       .single();
 
     if (existente?.estatus === 'canjeado')
-      return res.status(409).json({ error: 'No se puede eliminar un código ya canjeado.' });
+      return res.status(409).json({ error: 'No se puede eliminar un cÃ³digo ya canjeado.' });
 
     await CodigoModel.delete(id);
-    return res.json({ message: 'Código eliminado.' });
+    return res.json({ message: 'CÃ³digo eliminado.' });
   } catch (err) {
-    console.error('Admin deleteCodigo:', err);
-    return res.status(500).json({ error: 'Error al eliminar código.' });
+    console.error('Admin deleteCodigo:', err.message);
+    return res.status(500).json({ error: 'Error al eliminar cÃ³digo.' });
   }
 };
 
-// POST /admin/marketing — envío masivo de correos a todos los clientes
+// POST /admin/marketing â€” envÃ­o masivo de correos a todos los clientes
 exports.enviarMarketing = async (req, res) => {
   try {
     const { asunto, mensaje, imagenUrl } = req.body;
@@ -805,12 +816,12 @@ exports.enviarMarketing = async (req, res) => {
     });
 
     return res.json({
-      message: `Campaña enviada: ${resultados.enviados} correos entregados, ${resultados.fallidos} fallidos.`,
+      message: `CampaÃ±a enviada: ${resultados.enviados} correos entregados, ${resultados.fallidos} fallidos.`,
       total: emails.length,
       ...resultados,
     });
   } catch (err) {
-    console.error('Admin enviarMarketing:', err);
-    return res.status(500).json({ error: 'Error al enviar la campaña.' });
+    console.error('Admin enviarMarketing:', err.message);
+    return res.status(500).json({ error: 'Error al enviar la campaÃ±a.' });
   }
 };

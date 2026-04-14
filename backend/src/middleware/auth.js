@@ -1,20 +1,21 @@
 const jwt = require('jsonwebtoken');
 
-/**
- * Middleware to verify JWT tokens on protected routes.
- * Expects: Authorization: Bearer <token>
- */
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('Missing JWT_SECRET in environment variables. Server cannot start without it.');
+}
+
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // "Bearer <token>"
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { id, email, iat, exp }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -24,4 +25,11 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-module.exports = { verifyToken };
+const requireRole = (...roles) => (req, res, next) => {
+  if (!roles.includes(req.user?.tipo_usuario)) {
+    return res.status(403).json({ error: 'Acceso restringido.' });
+  }
+  next();
+};
+
+module.exports = { verifyToken, requireRole, JWT_SECRET };

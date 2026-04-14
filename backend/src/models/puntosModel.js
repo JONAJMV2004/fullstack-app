@@ -3,39 +3,32 @@ const { supabaseAdmin } = require('../config/supabase');
 const TABLE = 'puntos';
 
 const PuntosModel = {
-  // Saldo = SUM directamente en SQL (mucho más rápido que descargar todas las filas)
   async getBalance(usuarioId) {
+    // Try RPC first (fastest — single SQL call)
+    const { data: result, error: rpcErr } = await supabaseAdmin
+      .rpc('get_user_points_balance', { p_usuario_id: usuarioId });
+
+    if (!rpcErr && result?.[0]?.balance !== undefined) {
+      return result[0].balance;
+    }
+
+    // Fallback: sum in JS if RPC doesn't exist
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select('puntos', { count: 'exact' })
+      .select('puntos')
       .eq('usuario_id', usuarioId);
-    
+
     if (error) throw error;
-    
-    // Usar aggregation más eficiente
-    const { data: result, error: err } = await supabaseAdmin
-      .rpc('get_user_points_balance', { p_usuario_id: usuarioId });
-    
-    if (err && err.code !== 'PGRST204') {
-      // Fallback si la RPC no existe: suma en SQL con aggregation
-      const { data: aggregated, error: aggErr } = await supabaseAdmin
-        .from(TABLE)
-        .select('puntos')
-        .eq('usuario_id', usuarioId);
-      
-      if (aggErr) throw aggErr;
-      return (aggregated || []).reduce((sum, row) => sum + row.puntos, 0);
-    }
-    
-    return result?.[0]?.balance || 0;
+    return (data || []).reduce((sum, row) => sum + row.puntos, 0);
   },
 
-  async getHistory(usuarioId) {
+  async getHistory(usuarioId, { limit = 50, offset = 0 } = {}) {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
       .select('*')
       .eq('usuario_id', usuarioId)
-      .order('fecha', { ascending: false });
+      .order('fecha', { ascending: false })
+      .range(offset, offset + limit - 1);
     if (error) throw error;
     return data;
   },

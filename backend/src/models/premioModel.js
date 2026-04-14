@@ -24,16 +24,25 @@ const PremioModel = {
   },
 
   async decrementDisponibilidad(id) {
+    // Atomic: only decrement if disponibilidad > 0 (prevents race conditions)
+    const { data, error } = await supabaseAdmin
+      .rpc('decrement_premio_disponibilidad', { p_premio_id: id });
+
+    if (!error && data?.[0]) return data[0];
+
+    // Fallback if RPC doesn't exist: read-then-write (less safe but functional)
     const premio = await PremioModel.getById(id);
     if (!premio || premio.disponibilidad <= 0) throw new Error('Premio sin disponibilidad.');
-    const { data, error } = await supabaseAdmin
+    const { data: updated, error: updateErr } = await supabaseAdmin
       .from(TABLE)
       .update({ disponibilidad: premio.disponibilidad - 1 })
       .eq('id', id)
+      .gt('disponibilidad', 0)
       .select('id, nombre, puntos_necesarios, disponibilidad, imagen_url')
       .single();
-    if (error) throw error;
-    return data;
+    if (updateErr) throw updateErr;
+    if (!updated) throw new Error('Premio sin disponibilidad.');
+    return updated;
   },
 
   async incrementDisponibilidad(id) {

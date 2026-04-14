@@ -8,14 +8,18 @@ if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment variables');
 }
 
+if (!supabaseAnonKey) {
+  throw new Error('Missing SUPABASE_ANON_KEY in environment variables');
+}
+
 // Admin client (service role) — bypasses RLS, for server-side operations
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
   },
-});  
-//hola
+});
+
 // Public client (anon key) — for auth operations like signIn/signUp
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

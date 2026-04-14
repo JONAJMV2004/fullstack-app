@@ -44,7 +44,7 @@ exports.registrarEstancia = async (req, res) => {
 
     return res.status(201).json({ message: 'Estancia registrada. Pendiente de aprobación.', estancia });
   } catch (err) {
-    console.error('registrarEstancia error:', err);
+    console.error('registrarEstancia error:', err.message);
     return res.status(500).json({ error: 'Error al registrar estancia.' });
   }
 };
@@ -55,7 +55,7 @@ exports.getUbicaciones = async (req, res) => {
     const ubicaciones = await EstanciaModel.getUbicacionesDisponibles();
     return res.status(200).json({ ubicaciones });
   } catch (err) {
-    console.error('getUbicaciones error:', err);
+    console.error('getUbicaciones error:', err.message);
     return res.status(500).json({ error: 'Error al obtener ubicaciones.' });
   }
 };
@@ -66,7 +66,7 @@ exports.getEstancias = async (req, res) => {
     const estancias = await EstanciaModel.getByUsuario(req.user.id);
     return res.status(200).json({ estancias });
   } catch (err) {
-    console.error('getEstancias error:', err);
+    console.error('getEstancias error:', err.message);
     return res.status(500).json({ error: 'Error al obtener estancias.' });
   }
 };
@@ -94,7 +94,7 @@ exports.getPuntos = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getPuntos error:', err);
+    console.error('getPuntos error:', err.message);
     return res.status(500).json({ error: err.message || 'Error al obtener puntos.' });
   }
 };
@@ -122,7 +122,7 @@ exports.getCarnet = async (req, res) => {
       balance,
     });
   } catch (err) {
-    console.error('getCarnet error:', err);
+    console.error('getCarnet error:', err.message);
     return res.status(500).json({ error: 'Error al obtener carnet.' });
   }
 };
@@ -133,9 +133,11 @@ exports.getCarnet = async (req, res) => {
 exports.getPremios = async (req, res) => {
   try {
     const premios = await PremioModel.getAll();
+    // Premios cambian poco — cachear 5 min
+    res.set('Cache-Control', 'public, max-age=300');
     return res.status(200).json({ premios });
   } catch (err) {
-    console.error('getPremios error:', err);
+    console.error('getPremios error:', err.message);
     return res.status(500).json({ error: 'Error al obtener premios.' });
   }
 };
@@ -204,7 +206,7 @@ exports.canjearPremio = async (req, res) => {
       codigo: codigoUnico,
     });
   } catch (err) {
-    console.error('canjearPremio error:', err);
+    console.error('canjearPremio error:', err.message);
     return res.status(500).json({ error: 'Error al realizar canje.' });
   }
 };
@@ -215,7 +217,7 @@ exports.getCanjes = async (req, res) => {
     const canjes = await CanjeModel.getByUsuario(req.user.id);
     return res.status(200).json({ canjes });
   } catch (err) {
-    console.error('getCanjes error:', err);
+    console.error('getCanjes error:', err.message);
     return res.status(500).json({ error: 'Error al obtener canjes.' });
   }
 };
@@ -253,7 +255,7 @@ exports.canjearCodigo = async (req, res) => {
       puntos: registro.puntos,
     });
   } catch (err) {
-    console.error('canjearCodigo error:', err);
+    console.error('canjearCodigo error:', err.message);
     return res.status(500).json({ error: 'Error al canjear el código.' });
   }
 };
@@ -264,7 +266,7 @@ exports.getCodigosUsuario = async (req, res) => {
     const codigos = await CodigoModel.getByUsuario(req.user.id);
     return res.status(200).json({ codigos });
   } catch (err) {
-    console.error('getCodigosUsuario error:', err);
+    console.error('getCodigosUsuario error:', err.message);
     return res.status(500).json({ error: 'Error al obtener códigos.' });
   }
 };
@@ -285,7 +287,7 @@ exports.guardarResena = async (req, res) => {
 
     return res.status(200).json({ message: 'Reseña guardada.', codigo: actualizado });
   } catch (err) {
-    console.error('guardarResena error:', err);
+    console.error('guardarResena error:', err.message);
     return res.status(500).json({ error: 'Error al guardar la reseña.' });
   }
 };
@@ -324,7 +326,7 @@ exports.validarCodigo = async (req, res) => {
       premio: canje.premios,
     });
   } catch (err) {
-    console.error('validarCodigo error:', err);
+    console.error('validarCodigo error:', err.message);
     return res.status(500).json({ error: 'Error al validar código.' });
   }
 };

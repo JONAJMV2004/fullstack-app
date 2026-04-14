@@ -2,34 +2,55 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { supabase } = require('../config/supabase');
 const UsuarioModel = require('../models/usuarioModel');
+const { JWT_SECRET } = require('../middleware/auth');
 
 const SALT_ROUNDS = 12;
 const TOKEN_EXPIRES_IN = '7d';
+const MIN_PASSWORD_LENGTH = 8;
 
 function signToken(usuario) {
   return jwt.sign(
     { id: usuario.id, email: usuario.email, tipo_usuario: usuario.tipo_usuario },
-    process.env.JWT_SECRET,
+    JWT_SECRET,
     { expiresIn: TOKEN_EXPIRES_IN }
   );
+}
+
+function sanitizeUser(usuario) {
+  return {
+    id: usuario.id,
+    nombre: usuario.nombre,
+    name: usuario.nombre,
+    email: usuario.email,
+    telefono: usuario.telefono,
+    tipo_usuario: usuario.tipo_usuario,
+    avatar_url: usuario.avatar_url,
+  };
 }
 
 // POST /api/auth/register
 exports.register = async (req, res) => {
   try {
     const { nombre, name, email, password, telefono } = req.body;
-    const nombreFinal = nombre || name;
+    const nombreFinal = String(nombre || name || '').trim();
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const normalizedPhone = String(telefono || '').trim();
 
     if (!nombreFinal || !normalizedEmail || !password || !normalizedPhone)
       return res.status(400).json({ error: 'Nombre, email, celular y contraseña son requeridos.' });
 
-    if (password.length < 6)
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+    if (nombreFinal.length > 100)
+      return res.status(400).json({ error: 'El nombre es demasiado largo.' });
 
-    if (normalizedPhone.length < 8)
-      return res.status(400).json({ error: 'El celular debe tener al menos 8 caracteres.' });
+    if (password.length < MIN_PASSWORD_LENGTH)
+      return res.status(400).json({ error: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.` });
+
+    if (normalizedPhone.length < 8 || normalizedPhone.length > 20)
+      return res.status(400).json({ error: 'El celular debe tener entre 8 y 20 caracteres.' });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail))
+      return res.status(400).json({ error: 'Email inválido.' });
 
     const existing = await UsuarioModel.findByEmail(normalizedEmail);
     if (existing)
@@ -47,17 +68,10 @@ exports.register = async (req, res) => {
     return res.status(201).json({
       message: 'Registro exitoso.',
       token,
-      user: {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        name: usuario.nombre,
-        email: usuario.email,
-        telefono: usuario.telefono,
-        tipo_usuario: usuario.tipo_usuario,
-      },
+      user: sanitizeUser(usuario),
     });
   } catch (err) {
-    console.error('Register error:', err);
+    console.error('Register error:', err.message);
     return res.status(500).json({ error: 'Error del servidor al registrar.' });
   }
 };
@@ -84,17 +98,10 @@ exports.login = async (req, res) => {
     return res.status(200).json({
       message: 'Inicio de sesión exitoso.',
       token,
-      user: {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        name: usuario.nombre,
-        email: usuario.email,
-        telefono: usuario.telefono,
-        tipo_usuario: usuario.tipo_usuario,
-      },
+      user: sanitizeUser(usuario),
     });
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('Login error:', err.message);
     return res.status(500).json({ error: 'Error del servidor al iniciar sesión.' });
   }
 };
@@ -167,10 +174,10 @@ exports.oauthCallback = async (req, res) => {
       message: 'Login OAuth exitoso.',
       token,
       is_new_user: !!isNewUser,
-      user: { id: usuario.id, nombre: usuario.nombre, name: usuario.nombre, email: usuario.email, tipo_usuario: usuario.tipo_usuario, avatar_url: usuario.avatar_url },
+      user: sanitizeUser(usuario),
     });
   } catch (err) {
-    console.error('OAuth callback error:', err);
+    console.error('OAuth callback error:', err.message);
     return res.status(500).json({ error: 'Error del servidor en OAuth callback.' });
   }
 };
@@ -181,7 +188,7 @@ exports.deleteMe = async (req, res) => {
     await UsuarioModel.delete(req.user.id);
     return res.status(200).json({ message: 'Cuenta eliminada.' });
   } catch (err) {
-    console.error('DeleteMe error:', err);
+    console.error('DeleteMe error:', err.message);
     return res.status(500).json({ error: 'Error al eliminar cuenta.' });
   }
 };
@@ -194,7 +201,7 @@ exports.getMe = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado.' });
     return res.status(200).json({ user: { ...usuario, name: usuario.nombre } });
   } catch (err) {
-    console.error('GetMe error:', err);
+    console.error('GetMe error:', err.message);
     return res.status(500).json({ error: 'Error del servidor.' });
   }
 };
@@ -207,8 +214,8 @@ exports.updatePassword = async (req, res) => {
     if (!currentPassword || !newPassword)
       return res.status(400).json({ error: 'La contraseña actual y la nueva contraseña son requeridas.' });
 
-    if (newPassword.length < 6)
-      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+    if (newPassword.length < MIN_PASSWORD_LENGTH)
+      return res.status(400).json({ error: `La nueva contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.` });
 
     if (currentPassword === newPassword)
       return res.status(400).json({ error: 'La nueva contraseña debe ser diferente a la actual.' });
@@ -229,7 +236,7 @@ exports.updatePassword = async (req, res) => {
 
     return res.status(200).json({ message: 'Contraseña actualizada correctamente.' });
   } catch (err) {
-    console.error('UpdatePassword error:', err);
+    console.error('UpdatePassword error:', err.message);
     return res.status(500).json({ error: 'Error del servidor al actualizar la contraseña.' });
   }
 };

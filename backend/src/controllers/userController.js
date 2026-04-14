@@ -15,7 +15,7 @@ exports.getAllUsers = async (req, res) => {
     const users = await UserModel.findAll();
     return res.status(200).json({ users });
   } catch (err) {
-    console.error('GetAllUsers error:', err);
+    console.error('GetAllUsers error:', err.message);
     return res.status(500).json({ error: 'Server error.' });
   }
 };
@@ -40,7 +40,7 @@ exports.getUserById = async (req, res) => {
 
     return res.status(200).json({ user });
   } catch (err) {
-    console.error('GetUserById error:', err);
+    console.error('GetUserById error:', err.message);
     return res.status(500).json({ error: 'Server error.' });
   }
 };
@@ -77,8 +77,8 @@ exports.updateUser = async (req, res) => {
     }
 
     if (password !== undefined) {
-      if (password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+      if (password.length < 8) {
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
       }
       updates.passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     }
@@ -90,7 +90,7 @@ exports.updateUser = async (req, res) => {
     const user = await UserModel.update(id, updates);
     return res.status(200).json({ message: 'Profile updated.', user });
   } catch (err) {
-    console.error('UpdateUser error:', err);
+    console.error('UpdateUser error:', err.message);
     return res.status(500).json({ error: 'Server error.' });
   }
 };
@@ -115,7 +115,7 @@ exports.deleteUser = async (req, res) => {
     await UserModel.delete(id);
     return res.status(200).json({ message: 'Account deleted successfully.' });
   } catch (err) {
-    console.error('DeleteUser error:', err);
+    console.error('DeleteUser error:', err.message);
     return res.status(500).json({ error: 'Server error.' });
   }
 };

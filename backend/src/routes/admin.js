@@ -1,19 +1,12 @@
 const express = require('express');
 const multer  = require('multer');
 const router  = express.Router();
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/auth');
 const adminCtrl = require('../controllers/adminController');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-// Middleware: solo admins
-function requireAdmin(req, res, next) {
-  if (req.user?.tipo_usuario !== 'admin')
-    return res.status(403).json({ error: 'Acceso restringido a administradores.' });
-  next();
-}
-
-router.use(verifyToken, requireAdmin);
+router.use(verifyToken, requireRole('admin'));
 
 // Usuarios
 router.get('/usuarios',                adminCtrl.getUsuarios);
@@ -58,6 +51,6 @@ router.get('/ubicaciones/ocupacion', adminCtrl.getOcupacion);
 router.get('/ubicaciones',           adminCtrl.getUbicaciones);
 router.post('/ubicaciones',       adminCtrl.createUbicacion);
 router.patch('/ubicaciones/:id',  adminCtrl.updateUbicacion);
-router.delete('/ubicaciones/:id', adminCtrl.deleteUbicacion);;
+router.delete('/ubicaciones/:id', adminCtrl.deleteUbicacion);
 
 module.exports = router;

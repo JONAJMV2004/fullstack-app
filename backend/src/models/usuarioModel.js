@@ -1,6 +1,7 @@
 const { supabaseAdmin } = require('../config/supabase');
 
 const TABLE = 'usuarios';
+const PUBLIC_FIELDS = 'id, nombre, email, telefono, tipo_usuario, avatar_url, provider, fecha_registro';
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -19,10 +20,9 @@ const UsuarioModel = {
   },
 
   async findById(id) {
-    
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select('id, nombre, email, telefono, tipo_usuario, avatar_url, provider, fecha_registro')
+      .select(PUBLIC_FIELDS)
       .eq('id', id)
       .single();
     if (error && error.code !== 'PGRST116') throw error;
@@ -39,12 +39,22 @@ const UsuarioModel = {
     return data;
   },
 
+  async findAll({ limit = 100, offset = 0 } = {}) {
+    const { data, error } = await supabaseAdmin
+      .from(TABLE)
+      .select(PUBLIC_FIELDS)
+      .order('fecha_registro', { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) throw error;
+    return data || [];
+  },
+
   async create({ nombre, email, telefono, passwordHash, tipoUsuario = 'cliente' }) {
     const normalizedEmail = normalizeEmail(email);
     const { data, error } = await supabaseAdmin
       .from(TABLE)
       .insert([{ nombre, email: normalizedEmail, telefono, password_hash: passwordHash, tipo_usuario: tipoUsuario, provider: 'local' }])
-      .select('id, nombre, email, telefono, tipo_usuario, provider, fecha_registro')
+      .select(PUBLIC_FIELDS)
       .single();
     if (error) throw error;
     return data;
@@ -54,18 +64,18 @@ const UsuarioModel = {
     const normalizedEmail = normalizeEmail(email);
     const existing = await this.findByEmail(normalizedEmail);
 
-    if (existing){
-      const {data,error} = await supabaseAdmin
-      .from(TABLE)
-      .update({
-        nombre,
-        provider,
-       avatar_url: avatarUrl,
-       supabase_auth_id: supabaseAuthId
-      })
-      .eq('id', existing.id)
-      .select('id, nombre, email, tipo_usuario, provider, avatar_url, fecha_registro')
-      .single();
+    if (existing) {
+      const { data, error } = await supabaseAdmin
+        .from(TABLE)
+        .update({
+          nombre,
+          provider,
+          avatar_url: avatarUrl,
+          supabase_auth_id: supabaseAuthId,
+        })
+        .eq('id', existing.id)
+        .select(PUBLIC_FIELDS)
+        .single();
 
       if (error) throw error;
       return { user: data, isNewUser: false };
@@ -73,7 +83,7 @@ const UsuarioModel = {
 
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .insert([{ 
+      .insert([{
         nombre,
         email: normalizedEmail,
         provider,
@@ -81,24 +91,26 @@ const UsuarioModel = {
         supabase_auth_id: supabaseAuthId,
         tipo_usuario: 'cliente',
       }])
-      .select('id, nombre, email, tipo_usuario, provider, avatar_url, fecha_registro')
+      .select(PUBLIC_FIELDS)
       .single();
-      
+
     if (error) throw error;
     return { user: data, isNewUser: true };
   },
 
   async update(id, fields) {
     const allowed = {};
-    if (fields.nombre !== undefined) allowed.nombre = fields.nombre;
+    if (fields.nombre !== undefined) allowed.nombre = String(fields.nombre).trim();
     if (fields.passwordHash !== undefined) allowed.password_hash = fields.passwordHash;
-    if (fields.telefono !== undefined) allowed.telefono = fields.telefono;
+    if (fields.telefono !== undefined) allowed.telefono = String(fields.telefono).trim();
+
+    if (Object.keys(allowed).length === 0) throw new Error('No valid fields to update.');
 
     const { data, error } = await supabaseAdmin
       .from(TABLE)
       .update(allowed)
       .eq('id', id)
-      .select('id, nombre, email, tipo_usuario, provider, avatar_url, fecha_registro')
+      .select(PUBLIC_FIELDS)
       .single();
     if (error) throw error;
     return data;
