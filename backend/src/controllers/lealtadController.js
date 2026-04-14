@@ -4,6 +4,7 @@ const PuntosModel = require('../models/puntosModel');
 const PremioModel = require('../models/premioModel');
 const CanjeModel = require('../models/canjeModel');
 const CodigoModel = require('../models/codigoModel');
+const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado } = require('../config/mailer');
 
 // ── ESTANCIAS ────────────────────────────────────────────────────────────────
 
@@ -249,6 +250,19 @@ exports.canjearCodigo = async (req, res) => {
       puntos: registro.puntos,
     });
 
+    // Enviar correo de confirmación (sin bloquear la respuesta)
+    if (req.user.email) {
+      const fmt = (d) => new Date(d + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })
+      enviarCorreoEstanciaAprobada({
+        email: req.user.email,
+        nombre: req.user.nombre || req.user.name || 'Cliente',
+        checkIn: fmt(registro.fecha_ingreso),
+        checkOut: fmt(registro.fecha_salida),
+        noches: registro.noches,
+        puntos: registro.puntos,
+      }).catch(err => console.error('Error enviando correo de código canjeado:', err.message))
+    }
+
     return res.status(200).json({
       message: `¡Código canjeado! Se te asignaron ${registro.puntos} puntos.`,
       codigo: actualizado,
@@ -318,6 +332,16 @@ exports.validarCodigo = async (req, res) => {
 
     // Marcar como aprobado
     const canjeActualizado = await CanjeModel.updateEstado(canje.id, 'aprobado');
+
+    // Enviar correo de confirmación al cliente
+    if (canje.usuarios?.email) {
+      enviarCorreoCanjeAprobado({
+        email: canje.usuarios.email,
+        nombre: canje.usuarios.nombre || 'Cliente',
+        premio: canje.premios?.nombre || 'Premio',
+        codigoUnico: canje.codigo_unico,
+      }).catch(err => console.error('Error enviando correo de canje aprobado:', err.message))
+    }
 
     return res.status(200).json({
       message: 'Código válido. Canje aprobado.',

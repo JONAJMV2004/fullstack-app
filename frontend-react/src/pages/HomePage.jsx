@@ -44,7 +44,6 @@ export default function HomePage() {
   const [installHelpText, setInstallHelpText] = useState('')
 
   // Canjear código
-  const [showCodigo, setShowCodigo] = useState(false)
   const [codigoInput, setCodigoInput] = useState('')
   const [codigoLoading, setCodigoLoading] = useState(false)
   const [codigosCanjeados, setCodigosCanjeados] = useState([])
@@ -192,15 +191,12 @@ export default function HomePage() {
   const membresia = userData ? pad(userData.id, 4) : '—'
   const numTarjeta = userData ? generateCardNumber(userData.id) : '0000000000000000'
   const nombre = userData?.nombre || userData?.name || '—'
-  const initials = nombre !== '—' ? nombre.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?'
   const nivel = getNivel(balance)
-  const nextNivel = balance < 1000 ? { nombre: 'Plata', meta: 1000 } : balance < 5000 ? { nombre: 'Oro', meta: 5000 } : null
-  const progreso = nextNivel ? Math.min((balance / nextNivel.meta) * 100, 100) : 100
 
   return (
     <div className="app-body">
       <div className="app-page home-page">
-        <AppTopbar />
+        <AppTopbar balance={balance} nivel={nivel} />
         <AppLogoCircle />
 
         {showPwaPrompt && (
@@ -319,99 +315,101 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ── Puntos ── */}
-        <div className="tc-balance-card">
-          <div className="tc-balance-top">
-            <div className="tc-balance-avatar">{initials}</div>
-            <div className="tc-balance-info">
-              <p className="tc-balance-label">Puntos disponibles</p>
-              <p className="tc-balance-amount">{balance.toLocaleString()}</p>
+        {/* ── Canjear Código ── */}
+        <div className="booking-section" style={{ marginBottom: 24 }}>
+          <div className="booking-toggle-left" style={{ padding: '14px 16px 10px' }}>
+            <div className="booking-toggle-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div>
+              <div className="booking-toggle-title">Canjear Código</div>
+              <div className="booking-toggle-sub">Ingresa el código de tu estadía para acumular puntos</div>
             </div>
           </div>
-          {nextNivel && (
-            <div className="tc-progress-section">
-              <div className="tc-progress-header">
-                <span className="tc-progress-text">Progreso a nivel {nextNivel.nombre}</span>
-                <span className="tc-progress-text">{balance} / {nextNivel.meta.toLocaleString()}</span>
+
+          <div className="booking-body">
+            {alert && (
+              <div className={`booking-alert ${alert.type}`}>
+                {alert.type === 'success'
+                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                }
+                {alert.message}
               </div>
-              <div className="tc-progress-bar">
-                <div className="tc-progress-fill" style={{ width: `${progreso}%` }} />
+            )}
+
+            <form className="booking-form" onSubmit={handleCodigoSubmit} noValidate>
+              <div className="booking-field-group">
+                <div className="booking-field-label">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Código de estadía
+                </div>
+                <input
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 10,
+                    border: '1.5px solid rgba(255,255,255,0.1)',
+                    fontSize: 16, fontWeight: 600,
+                    letterSpacing: 2, textTransform: 'uppercase', outline: 'none',
+                    boxSizing: 'border-box',
+                    background: '#0f2a1a',
+                    color: 'rgba(255,255,255,0.85)',
+                  }}
+                  type="text"
+                  placeholder="Ej: CIELITO2025"
+                  value={codigoInput}
+                  onChange={(e) => setCodigoInput(e.target.value.toUpperCase())}
+                  maxLength={30}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                />
               </div>
-            </div>
-          )}
+
+              <button type="submit" className="booking-submit" disabled={codigoLoading || !codigoInput.trim()}>
+                {codigoLoading
+                  ? <><span className="booking-spinner"/><span>Validando...</span></>
+                  : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Canjear Código</span></>
+                }
+              </button>
+            </form>
+          </div>
         </div>
 
-        <Link to="/recompensas" className="btn-ch-primary home-canjear-btn">Canjear Puntos</Link>
-
-        {/* ── Canjear Código ── */}
-        <div className="booking-section">
-
-          <button className="booking-toggle" onClick={() => { setShowCodigo(!showCodigo); setAlert(null) }}>
-            <div className="booking-toggle-left">
-              <div className="booking-toggle-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <Link to="/recompensas" style={{ textDecoration: 'none', display: 'block', marginBottom: 18 }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #0d2a18 0%, #1a3d26 60%, #0a1f12 100%)',
+            border: '1px solid rgba(201,168,76,0.3)',
+            borderRadius: 16,
+            padding: '16px 20px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            boxShadow: '0 6px 24px rgba(0,0,0,0.4)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: 'rgba(201,168,76,0.12)',
+                border: '1px solid rgba(201,168,76,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+                </svg>
               </div>
               <div>
-                <div className="booking-toggle-title">Canjear Código</div>
-                <div className="booking-toggle-sub">Ingresa el código de tu estadía para acumular puntos</div>
+                <div style={{
+                  fontSize: '0.95rem', fontWeight: 700, letterSpacing: '0.02em',
+                  background: 'linear-gradient(135deg,#A07830,#E8C97A,#C9A84C)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                }}>Canjear Puntos</div>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                  Explora premios disponibles
+                </div>
               </div>
             </div>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ transition: 'transform .25s', transform: showCodigo ? 'rotate(180deg)' : 'rotate(0)', flexShrink: 0, color: '#2D6A50' }}>
-              <polyline points="6 9 12 15 18 9"/>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(201,168,76,0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
             </svg>
-          </button>
-
-          {showCodigo && (
-            <div className="booking-body">
-
-              {alert && (
-                <div className={`booking-alert ${alert.type}`}>
-                  {alert.type === 'success'
-                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  }
-                  {alert.message}
-                </div>
-              )}
-
-              <form className="booking-form" onSubmit={handleCodigoSubmit} noValidate>
-                <div className="booking-field-group">
-                  <div className="booking-field-label">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    Código de estadía
-                  </div>
-                  <input
-                    style={{
-                      width: '100%', padding: '12px 14px', borderRadius: 10,
-                      border: '1.5px solid rgba(255,255,255,0.1)',
-                      fontSize: 16, fontWeight: 600,
-                      letterSpacing: 2, textTransform: 'uppercase', outline: 'none',
-                      boxSizing: 'border-box',
-                      background: '#0f2a1a',
-                      color: 'rgba(255,255,255,0.85)',
-                    }}
-                    type="text"
-                    placeholder="Ej: CIELITO2025"
-                    value={codigoInput}
-                    onChange={(e) => setCodigoInput(e.target.value.toUpperCase())}
-                    maxLength={30}
-                    autoComplete="off"
-                    autoCapitalize="characters"
-                  />
-                </div>
-
-                <button type="submit" className="booking-submit" disabled={codigoLoading || !codigoInput.trim()}>
-                  {codigoLoading
-                    ? <><span className="booking-spinner"/><span>Validando...</span></>
-                    : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Canjear Código</span></>
-                  }
-                </button>
-              </form>
-
-            </div>
-          )}
-        </div>
+          </div>
+        </Link>
 
         {/* ── Historial de códigos canjeados ── */}
         {codigosCanjeados.length > 0 && (
