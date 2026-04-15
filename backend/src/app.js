@@ -8,6 +8,7 @@ const authRoutes   = require('./routes/auth');
 const userRoutes   = require('./routes/users');
 const lealtadRoutes = require('./routes/lealtad');
 const adminRoutes  = require('./routes/admin');
+const notificacionRoutes = require('./routes/notificaciones');
 
 const app = express();
 
@@ -104,6 +105,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/lealtad', lealtadRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notificaciones', notificacionRoutes);
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 
@@ -128,3 +130,4 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+module.exports.isOriginAllowed = isOriginAllowed;

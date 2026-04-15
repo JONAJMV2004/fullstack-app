@@ -1,7 +1,7 @@
 ﻿-- =============================================================================
 -- Cielito Home — Esquema de referencia
 -- Refleja la base de datos real en producción (Supabase / PostgreSQL)
--- Última actualización: 2026-04-09
+-- Última actualización: 2026-04-14
 -- Ejecutar en: Supabase Dashboard → SQL Editor
 -- =============================================================================
 
@@ -119,6 +119,22 @@ create table if not exists public.ubicaciones (
 
 create unique index if not exists idx_ubicaciones_nombre_lower
   on public.ubicaciones (lower(nombre));
+
+-- -----------------------------------------------------------------------------
+-- TABLA: notificaciones
+-- -----------------------------------------------------------------------------
+create table if not exists public.notificaciones (
+  id          bigserial primary key,
+  usuario_id  bigint not null references public.usuarios (id) on delete cascade,
+  tipo        text not null default 'general' check (tipo in ('puntos','canje','estancia','promo','sistema','general')),
+  titulo      text not null,
+  mensaje     text,
+  leida       boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_notificaciones_usuario
+  on public.notificaciones (usuario_id, leida, created_at desc);
 
 -- -----------------------------------------------------------------------------
 -- TRIGGER: updated_at automático en usuarios

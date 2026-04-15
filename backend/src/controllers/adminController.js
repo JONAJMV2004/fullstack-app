@@ -2,6 +2,7 @@
 const bcrypt = require('bcryptjs');
 const CodigoModel = require('../models/codigoModel');
 const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing } = require('../config/mailer');
+const { enviarNotificacion } = require('../services/notificacionService');
 
 const SALT_ROUNDS = 12;
 const MIN_PASSWORD_LENGTH = 8;
@@ -223,6 +224,14 @@ exports.updateEstancia = async (req, res) => {
           puntos: puntosFinales,
         }).catch(err => console.error('Error enviando correo estancia:', err));
       }
+
+      // Notificación en tiempo real
+      enviarNotificacion({
+        usuarioId: current.usuario_id,
+        tipo: 'estancia',
+        titulo: 'Estancia aprobada',
+        mensaje: `Tu estancia (${checkIn} – ${checkOut}) fue aprobada. +${puntosFinales} puntos.`,
+      }).catch(e => console.error('Notif error:', e.message));
     }
 
     return res.json({ message: 'Estancia actualizada.', estancia: data });
@@ -419,6 +428,14 @@ exports.updateCanje = async (req, res) => {
         premio: data.premios?.nombre || 'Premio',
         codigoUnico: data.codigo_unico,
       }).catch(err => console.error('Error enviando correo canje:', err));
+
+      // Notificación en tiempo real
+      enviarNotificacion({
+        usuarioId: data.usuario_id,
+        tipo: 'canje',
+        titulo: 'Canje aprobado',
+        mensaje: `Tu canje de "${data.premios?.nombre || 'Premio'}" fue aprobado. Código: ${data.codigo_unico}`,
+      }).catch(e => console.error('Notif error:', e.message));
     }
 
     return res.json({ message: 'Canje actualizado.', canje: data });

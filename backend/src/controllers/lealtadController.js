@@ -4,6 +4,7 @@ const PuntosModel = require('../models/puntosModel');
 const PremioModel = require('../models/premioModel');
 const CanjeModel = require('../models/canjeModel');
 const CodigoModel = require('../models/codigoModel');
+const { enviarNotificacion } = require('../services/notificacionService');
 const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado } = require('../config/mailer');
 
 // ── ESTANCIAS ────────────────────────────────────────────────────────────────
@@ -42,6 +43,14 @@ exports.registrarEstancia = async (req, res) => {
       estado: 'pendiente',
       ubicacion: ubicacionNormalizada,
     });
+
+    // Notificación en tiempo real
+    enviarNotificacion({
+      usuarioId,
+      tipo: 'estancia',
+      titulo: 'Estancia registrada',
+      mensaje: `Tu estancia fue registrada y está pendiente de aprobación.`,
+    }).catch(e => console.error('Notif error:', e.message));
 
     return res.status(201).json({ message: 'Estancia registrada. Pendiente de aprobación.', estancia });
   } catch (err) {
@@ -201,6 +210,14 @@ exports.canjearPremio = async (req, res) => {
       throw puntosErr;
     }
 
+    // Notificación en tiempo real
+    enviarNotificacion({
+      usuarioId,
+      tipo: 'canje',
+      titulo: 'Canje realizado',
+      mensaje: `Canjeaste "${premio.nombre}" por ${premio.puntos_necesarios} puntos. Código: ${codigoUnico}`,
+    }).catch(e => console.error('Notif error:', e.message));
+
     return res.status(201).json({
       message: 'Canje realizado con éxito.',
       canje,
@@ -262,6 +279,14 @@ exports.canjearCodigo = async (req, res) => {
         puntos: registro.puntos,
       }).catch(err => console.error('Error enviando correo de código canjeado:', err.message))
     }
+
+    // Notificación en tiempo real
+    enviarNotificacion({
+      usuarioId,
+      tipo: 'puntos',
+      titulo: `+${registro.puntos} puntos`,
+      mensaje: `Código canjeado. Estancia en ${registro.ubicacion} (${registro.noches} noche${registro.noches !== 1 ? 's' : ''}).`,
+    }).catch(e => console.error('Notif error:', e.message));
 
     return res.status(200).json({
       message: `¡Código canjeado! Se te asignaron ${registro.puntos} puntos.`,
