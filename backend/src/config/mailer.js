@@ -1,7 +1,12 @@
 const nodemailer = require('nodemailer');
-
 const dns = require('dns');
+const net = require('net');
+
+// Forzar IPv4: necesario en Render donde IPv6 no es alcanzable
 dns.setDefaultResultOrder('ipv4first');
+if (typeof net.setDefaultAutoSelectFamily === 'function') {
+  net.setDefaultAutoSelectFamily(false);
+}
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
@@ -11,7 +16,6 @@ const transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, ''),
   },
-  family: 4,
 });
 
 function plantillaBase(contenido) {
