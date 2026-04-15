@@ -1,10 +1,11 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
-  family: 4,
+  lookup: (hostname, options, cb) => dns.lookup(hostname, { family: 4 }, cb),
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, ''),
