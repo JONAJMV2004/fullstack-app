@@ -101,7 +101,6 @@ export default function HomePage() {
     if (codigoParam) {
       window.history.replaceState({}, '', '/home')
       setPendingCodigo(codigoParam.toUpperCase())
-      setShowCodigo(true)
     }
   }, [])
 
