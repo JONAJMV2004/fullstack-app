@@ -15,7 +15,7 @@
   display: flex;
   min-height: 100dvh;
   background: #f0f4f2;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -328,6 +328,7 @@
 .badge.pendiente  { background: #fefcbf; color: #744210; }
 .badge.aprobado   { background: #c6f6d5; color: #22543d; }
 .badge.rechazado  { background: #fed7d7; color: #742a2a; }
+.badge.entregado  { background: #e9d8fd; color: #44337a; }
 .badge.activo     { background: #c6f6d5; color: #22543d; }
 .badge.completado { background: #bee3f8; color: #2a4365; }
 .badge.inactivo   { background: #e2e8f0; color: #4a5568; }

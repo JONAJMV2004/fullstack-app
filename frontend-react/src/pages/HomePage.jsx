@@ -249,7 +249,7 @@ export default function HomePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(201,168,76,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
               <span style={{
-                fontFamily: 'Georgia, serif',
+                fontFamily: "'Poppins', sans-serif",
                 fontSize: '0.88rem',
                 letterSpacing: '0.08em',
                 background: 'linear-gradient(135deg,#A07830,#E8C97A,#C9A84C)',
@@ -293,7 +293,7 @@ export default function HomePage() {
 
           {/* Número de tarjeta */}
           <p style={{
-            fontFamily: 'Georgia, "Courier New", monospace',
+            fontFamily: "'Poppins', sans-serif",
             fontSize: '1.15rem',
             letterSpacing: '0.25em',
             color: 'rgba(255,255,255,0.9)',
