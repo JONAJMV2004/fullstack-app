@@ -17,7 +17,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -109,6 +109,11 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.auth-body * {
+  font-family: inherit;
 }
 
 .ch-back-btn {
@@ -410,6 +415,11 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.app-body * {
+  font-family: inherit;
 }
 
 .app-page {

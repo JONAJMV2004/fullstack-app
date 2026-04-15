@@ -41,7 +41,8 @@ export default function AdminCanjesPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setAlert({ type: 'success', msg: `Canje ${estado === 'aprobado' ? 'aceptado' : 'rechazado'} correctamente.` })
+      const msgs = { aprobado: 'aceptado', rechazado: 'rechazado', entregado: 'marcado como entregado' }
+      setAlert({ type: 'success', msg: `Canje ${msgs[estado] || estado} correctamente.` })
       cargar()
     } catch (err) { setAlert({ type: 'error', msg: err.message }) }
   }
@@ -168,17 +169,18 @@ export default function AdminCanjesPage() {
             <option value="">Todos</option>
             <option value="pendiente">Pendiente</option>
             <option value="aprobado">Aprobado</option>
+            <option value="entregado">Entregado</option>
             <option value="rechazado">Rechazado</option>
           </select>
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
-              <tr><th>ID</th><th>Usuario</th><th>Premio</th><th>Ubicación</th><th>Código</th><th>Estado</th><th>Fecha</th></tr>
+              <tr><th>ID</th><th>Usuario</th><th>Premio</th><th>Ubicación</th><th>Código</th><th>Estado</th><th>Fecha</th><th></th></tr>
             </thead>
             <tbody>
               {!filtered.length ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#718096', padding: 24 }}>Sin canjes.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: '#718096', padding: 24 }}>Sin canjes.</td></tr>
               ) : filtered.map(c => (
                 <tr key={c.id}>
                   <td>{c.id}</td>
@@ -196,6 +198,17 @@ export default function AdminCanjesPage() {
                   <td><code className="admin-code">{c.codigo_unico}</code></td>
                   <td><span className={`badge ${c.estado}`}>{c.estado}</span></td>
                   <td>{formatDate(c.fecha || c.fecha_canje)}</td>
+                  <td>
+                    {c.estado === 'aprobado' && (
+                      <button
+                        className="btn-admin sm"
+                        style={{ background: '#6366f1', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}
+                        onClick={() => handleUpdateEstado(c.id, 'entregado')}
+                      >
+                        📦 Entregar
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

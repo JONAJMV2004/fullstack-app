@@ -5,7 +5,7 @@ const PremioModel = require('../models/premioModel');
 const CanjeModel = require('../models/canjeModel');
 const CodigoModel = require('../models/codigoModel');
 const { enviarNotificacion } = require('../services/notificacionService');
-const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado } = require('../config/mailer');
+const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoNuevoCanje } = require('../config/mailer');
 
 // ── ESTANCIAS ────────────────────────────────────────────────────────────────
 
@@ -217,6 +217,16 @@ exports.canjearPremio = async (req, res) => {
       titulo: 'Canje realizado',
       mensaje: `Canjeaste "${premio.nombre}" por ${premio.puntos_necesarios} puntos. Código: ${codigoUnico}`,
     }).catch(e => console.error('Notif error:', e.message));
+
+    // Notificar al admin del nuevo canje
+    enviarCorreoNuevoCanje({
+      nombreCliente: req.user.nombre || req.user.name || 'Cliente',
+      emailCliente: req.user.email,
+      premio: premio.nombre,
+      puntos: premio.puntos_necesarios,
+      codigoUnico,
+      ubicacion: ubicacion || null,
+    }).catch(err => console.error('Error enviando correo de nuevo canje al admin:', err.message));
 
     return res.status(201).json({
       message: 'Canje realizado con éxito.',
