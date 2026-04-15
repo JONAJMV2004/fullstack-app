@@ -4,11 +4,6 @@ import { useAuth, API_BASE } from '../context/AuthContext'
 import AppTopbar, { AppLogoCircle } from '../components/AppTopbar'
 import BottomNav from '../components/BottomNav'
 
-const PWA_NEW_USER_KEY = 'pwa_prompt_new_user'
-const PWA_DISMISSED_PREFIX = 'pwa_prompt_dismissed_'
-const PWA_FIRST_VISIT_PREFIX = 'pwa_prompt_seen_home_'
-const PWA_LANDING_SEEN_KEY = 'pwa_prompt_seen_landing'
-
 function pad(num, size) {
   return String(num).padStart(size, '0')
 }
@@ -34,15 +29,9 @@ function getNivel(balance) {
 }
 
 export default function HomePage() {
-  const { token, user, authHeaders, clearSession } = useAuth()
+  const { token, authHeaders, clearSession } = useAuth()
   const [userData, setUserData] = useState(null)
   const [balance, setBalance] = useState(0)
-  const [pwaPromptEvent, setPwaPromptEvent] = useState(null)
-  const [showPwaPrompt, setShowPwaPrompt] = useState(false)
-  const [isIosDevice, setIsIosDevice] = useState(false)
-  const [isStandaloneMode, setIsStandaloneMode] = useState(false)
-  const [installHelpText, setInstallHelpText] = useState('')
-
   // Canjear código
   const [codigoInput, setCodigoInput] = useState('')
   const [codigoLoading, setCodigoLoading] = useState(false)
@@ -197,31 +186,6 @@ export default function HomePage() {
       <div className="app-page home-page">
         <AppTopbar balance={balance} nivel={nivel} />
         <AppLogoCircle />
-
-        {showPwaPrompt && (
-          <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="pwa-modal-title">
-            <div className="modal-card pwa-modal-card">
-              <div className="pwa-modal-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                  <path d="M12 3v12" />
-                  <path d="m8 11 4 4 4-4" />
-                  <rect x="4" y="17" width="16" height="4" rx="1.5" />
-                </svg>
-              </div>
-              <h3 id="pwa-modal-title" className="modal-title">Instala Cielito Home</h3>
-              <p className="modal-desc">
-                Te recomendamos instalar la app para abrirla más rápido y recibir una experiencia más fluida.
-                {isIosDevice && !pwaPromptEvent && ' En Safari, usa Compartir y luego Agregar a pantalla de inicio.'}
-              </p>
-              {installHelpText && <p className="pwa-install-note">{installHelpText}</p>}
-
-              <div className="modal-actions pwa-modal-actions">
-                <button type="button" className="btn-modal-cancel" onClick={handleClosePwaPrompt}>Ahora no</button>
-                <button type="button" className="btn-ch-primary modal-confirm-btn" onClick={handleInstallPwa}>Instalar</button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <h1 className="app-section-title">Mi Tarjeta</h1>
 
