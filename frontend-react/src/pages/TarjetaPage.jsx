@@ -142,7 +142,7 @@ export default function TarjetaPage() {
       background: BG,
       minHeight: '100vh',
       paddingBottom: 82,
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
       <div style={{ maxWidth: 430, margin: '0 auto', padding: '0 18px' }}>
 
@@ -150,7 +150,7 @@ export default function TarjetaPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 52, paddingBottom: 4 }}>
           {/* Logo */}
           <div style={{
-            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontFamily: "'Poppins', sans-serif",
             fontSize: '1.35rem',
             fontWeight: 400,
             background: 'linear-gradient(135deg,#A07830,#E8C97A,#C9A84C)',
@@ -166,7 +166,7 @@ export default function TarjetaPage() {
 
         {/* ── Title ── */}
         <h1 style={{
-          fontFamily: 'Georgia, serif',
+          fontFamily: "'Poppins', sans-serif",
           fontSize: '1.15rem',
           fontWeight: 400,
           color: 'rgba(255,255,255,0.85)',
@@ -199,7 +199,7 @@ export default function TarjetaPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(201,168,76,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
               <span style={{
-                fontFamily: 'Georgia, serif',
+                fontFamily: "'Poppins', sans-serif",
                 fontSize: '0.88rem',
                 letterSpacing: '0.08em',
                 background: 'linear-gradient(135deg,#A07830,#E8C97A,#C9A84C)',
@@ -229,7 +229,7 @@ export default function TarjetaPage() {
 
           {/* Número de tarjeta */}
           <p style={{
-            fontFamily: 'Georgia, "Courier New", monospace',
+            fontFamily: "'Poppins', sans-serif",
             fontSize: '1.15rem',
             letterSpacing: '0.25em',
             color: 'rgba(255,255,255,0.9)',
@@ -347,7 +347,7 @@ export default function TarjetaPage() {
               padding: '13px 16px',
               color: 'white',
               textDecoration: 'none',
-              fontFamily: 'Georgia, serif',
+              fontFamily: "'Poppins', sans-serif",
               fontSize: '0.88rem',
               letterSpacing: '0.03em',
               boxShadow: neoOut,

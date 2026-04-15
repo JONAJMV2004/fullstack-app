@@ -1,7 +1,7 @@
 ﻿const { supabaseAdmin } = require('../config/supabase');
 const bcrypt = require('bcryptjs');
 const CodigoModel = require('../models/codigoModel');
-const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing } = require('../config/mailer');
+const { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing, enviarCorreoCanjeEntregado } = require('../config/mailer');
 
 const SALT_ROUNDS = 12;
 const MIN_PASSWORD_LENGTH = 8;
@@ -399,7 +399,7 @@ exports.updateCanje = async (req, res) => {
   try {
     const { id } = req.params;
     const { estado } = req.body;
-    const estadosValidos = ['aprobado', 'rechazado', 'pendiente'];
+    const estadosValidos = ['aprobado', 'rechazado', 'pendiente', 'entregado'];
     if (!estadosValidos.includes(estado))
       return res.status(400).json({ error: 'Estado invÃ¡lido.' });
 
@@ -411,14 +411,22 @@ exports.updateCanje = async (req, res) => {
       .single();
     if (error) throw error;
 
-    // Enviar correo cuando el canje es aprobado
-    if (estado === 'aprobado' && data?.usuarios?.email) {
-      enviarCorreoCanjeAprobado({
-        email: data.usuarios.email,
-        nombre: data.usuarios.nombre || 'Usuario',
-        premio: data.premios?.nombre || 'Premio',
-        codigoUnico: data.codigo_unico,
-      }).catch(err => console.error('Error enviando correo canje:', err));
+    // Enviar correo según el nuevo estado
+    if (data?.usuarios?.email) {
+      if (estado === 'aprobado') {
+        enviarCorreoCanjeAprobado({
+          email: data.usuarios.email,
+          nombre: data.usuarios.nombre || 'Usuario',
+          premio: data.premios?.nombre || 'Premio',
+          codigoUnico: data.codigo_unico,
+        }).catch(err => console.error('Error enviando correo canje aprobado:', err));
+      } else if (estado === 'entregado') {
+        enviarCorreoCanjeEntregado({
+          email: data.usuarios.email,
+          nombre: data.usuarios.nombre || 'Usuario',
+          premio: data.premios?.nombre || 'Premio',
+        }).catch(err => console.error('Error enviando correo canje entregado:', err));
+      }
     }
 
     return res.json({ message: 'Canje actualizado.', canje: data });

@@ -127,4 +127,70 @@ async function enviarCorreoMarketing({ emails, asunto, mensaje, imagenUrl }) {
   return resultados;
 }
 
-module.exports = { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing };
+async function enviarCorreoNuevoCanje({ nombreCliente, emailCliente, premio, puntos, codigoUnico, ubicacion }) {
+  const html = plantillaBase(`
+    <p style="font-size: 1rem; color: #2d3748; margin: 0 0 8px;">Nueva solicitud de canje recibida.</p>
+
+    <div style="background: #f7fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;">
+      <p style="margin: 0 0 10px; font-size: .85rem; font-weight: 700; color: #2D6A50; text-transform: uppercase; letter-spacing: .05em;">Detalle del canje</p>
+      <table style="width: 100%; border-collapse: collapse; font-size: .9rem; color: #2d3748;">
+        <tr>
+          <td style="padding: 5px 0; color: #718096;">Cliente</td>
+          <td style="padding: 5px 0; font-weight: 600; text-align: right;">${nombreCliente}</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px 0; color: #718096;">Correo</td>
+          <td style="padding: 5px 0; font-weight: 600; text-align: right;">${emailCliente}</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px 0; color: #718096;">Premio solicitado</td>
+          <td style="padding: 5px 0; font-weight: 600; text-align: right;">${premio}</td>
+        </tr>
+        <tr>
+          <td style="padding: 5px 0; color: #718096;">Puntos utilizados</td>
+          <td style="padding: 5px 0; font-weight: 600; text-align: right;">${puntos} pts</td>
+        </tr>
+        ${ubicacion ? `<tr>
+          <td style="padding: 5px 0; color: #718096;">Ubicación</td>
+          <td style="padding: 5px 0; font-weight: 600; text-align: right;">${ubicacion}</td>
+        </tr>` : ''}
+        <tr style="border-top: 1px solid #e2e8f0;">
+          <td style="padding: 8px 0 0; color: #718096;">Código de canje</td>
+          <td style="padding: 8px 0 0; font-weight: 800; color: #2D6A50; text-align: right; font-family: monospace; font-size: 1rem; letter-spacing: 2px;">${codigoUnico}</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color: #718096; font-size: .85rem; margin: 0;">Ingresa al panel de administración para aprobar o rechazar este canje.</p>
+  `);
+
+  await transporter.sendMail({
+    from: `"Cielito Home" <${process.env.GMAIL_USER}>`,
+    to: process.env.GMAIL_USER,
+    subject: `🎁 Nuevo canje: ${premio} — ${nombreCliente}`,
+    html,
+  });
+}
+
+async function enviarCorreoCanjeEntregado({ email, nombre, premio }) {
+  const html = plantillaBase(`
+    <p style="font-size: 1rem; color: #2d3748; margin: 0 0 8px;">Hola, <strong>${nombre}</strong> 👋</p>
+    <p style="color: #4a5568; margin: 0 0 20px;">¡Tu premio ya fue entregado! Esperamos que lo disfrutes mucho.</p>
+
+    <div style="background: #e9d8fd; border: 1.5px solid #d6bcfa; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; text-align: center;">
+      <p style="margin: 0 0 6px; font-size: .8rem; font-weight: 700; color: #44337a; text-transform: uppercase; letter-spacing: .05em;">Premio entregado</p>
+      <p style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #44337a;">${premio}</p>
+    </div>
+
+    <p style="color: #718096; font-size: .85rem; margin: 0;">Gracias por ser parte del programa de lealtad de Cielito Home. ¡Nos vemos pronto! 🏡</p>
+  `);
+
+  await transporter.sendMail({
+    from: `"Cielito Home" <${process.env.GMAIL_USER}>`,
+    to: email,
+    subject: '🎉 Tu premio de Cielito Home fue entregado',
+    html,
+  });
+}
+
+module.exports = { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing, enviarCorreoNuevoCanje, enviarCorreoCanjeEntregado };
