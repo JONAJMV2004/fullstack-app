@@ -1,5 +1,8 @@
 const nodemailer = require('nodemailer');
 
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
@@ -8,6 +11,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, ''),
   },
+  family: 4,
 });
 
 function plantillaBase(contenido) {
