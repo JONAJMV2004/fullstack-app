@@ -1,13 +1,24 @@
 const nodemailer = require('nodemailer');
 
+const GMAIL_USER = GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '');
+
+console.log('[mailer] GMAIL_USER:', GMAIL_USER ? `${GMAIL_USER.slice(0, 4)}***` : '❌ NO DEFINIDO');
+console.log('[mailer] GMAIL_PASS:', GMAIL_PASS ? `${'*'.repeat(GMAIL_PASS.length)} (${GMAIL_PASS.length} chars)` : '❌ NO DEFINIDO');
+
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, ''),
+    user: GMAIL_USER,
+    pass: GMAIL_PASS,
   },
+});
+
+transporter.verify((err) => {
+  if (err) console.error('[mailer] ❌ Error verificando conexión SMTP:', err.message);
+  else console.log('[mailer] ✅ Conexión SMTP lista');
 });
 
 function plantillaBase(contenido) {
@@ -60,7 +71,7 @@ async function enviarCorreoEstanciaAprobada({ email, nombre, checkIn, checkOut, 
   `);
 
   await transporter.sendMail({
-    from: `"Cielito Home" <${process.env.GMAIL_USER}>`,
+    from: `"Cielito Home" <${GMAIL_USER}>`,
     to: email,
     subject: '✅ Tu estadía en Cielito Home fue confirmada',
     html,
@@ -86,7 +97,7 @@ async function enviarCorreoCanjeAprobado({ email, nombre, premio, codigoUnico })
   `);
 
   await transporter.sendMail({
-    from: `"Cielito Home" <${process.env.GMAIL_USER}>`,
+    from: `"Cielito Home" <${GMAIL_USER}>`,
     to: email,
     subject: '🎁 Tu canje en Cielito Home fue aprobado',
     html,
@@ -112,7 +123,7 @@ async function enviarCorreoMarketing({ emails, asunto, mensaje, imagenUrl }) {
   for (const email of emails) {
     try {
       await transporter.sendMail({
-        from: `"Cielito Home" <${process.env.GMAIL_USER}>`,
+        from: `"Cielito Home" <${GMAIL_USER}>`,
         to: email,
         subject: asunto,
         html,
@@ -167,8 +178,8 @@ async function enviarCorreoNuevoCanje({ nombreCliente, emailCliente, premio, pun
   `);
 
   await transporter.sendMail({
-    from: `"Cielito Home" <${process.env.GMAIL_USER}>`,
-    to: process.env.GMAIL_USER,
+    from: `"Cielito Home" <${GMAIL_USER}>`,
+    to: GMAIL_USER,
     subject: `🎁 Nuevo canje: ${premio} — ${nombreCliente}`,
     html,
   });
@@ -188,7 +199,7 @@ async function enviarCorreoCanjeEntregado({ email, nombre, premio }) {
   `);
 
   await transporter.sendMail({
-    from: `"Cielito Home" <${process.env.GMAIL_USER}>`,
+    from: `"Cielito Home" <${GMAIL_USER}>`,
     to: email,
     subject: '🎉 Tu premio de Cielito Home fue entregado',
     html,
