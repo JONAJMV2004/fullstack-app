@@ -55,21 +55,17 @@ async function enviarCorreoEstanciaAprobada({ email, nombre, checkIn, checkOut, 
   await sgMail.send({ from: FROM, to: email, subject: '✅ Tu estadía en Cielito Home fue confirmada', html });
 }
 
-async function enviarCorreoCanjeAprobado({ email, nombre, premio, codigoUnico }) {
+async function enviarCorreoCanjeAprobado({ email, nombre, premio }) {
   const html = plantillaBase(`
     <p style="font-size: 1rem; color: #2d3748; margin: 0 0 8px;">Hola, <strong>${nombre}</strong> 👋</p>
-    <p style="color: #4a5568; margin: 0 0 20px;">¡Tu solicitud de canje fue <strong>aprobada</strong>! Aquí está tu código para recoger tu regalo en recepción.</p>
+    <p style="color: #4a5568; margin: 0 0 20px;">¡Tu solicitud de canje fue <strong>aprobada</strong>! Tu premio será entregado durante tu próxima estancia en Cielito Home.</p>
 
     <div style="background: #fffff0; border: 1.5px solid #fefcbf; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;">
       <p style="margin: 0 0 10px; font-size: .85rem; font-weight: 700; color: #744210; text-transform: uppercase; letter-spacing: .05em;">Tu regalo</p>
-      <p style="margin: 0 0 16px; font-size: 1rem; font-weight: 700; color: #2d3748;">${premio}</p>
-      <p style="margin: 0 0 8px; font-size: .8rem; color: #718096; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;">Código de canje</p>
-      <div style="background: #2D6A50; color: #fff; border-radius: 8px; padding: 12px 0; text-align: center; letter-spacing: 4px; font-size: 1.5rem; font-weight: 800; font-family: monospace;">
-        ${codigoUnico}
-      </div>
+      <p style="margin: 0; font-size: 1rem; font-weight: 700; color: #2d3748;">${premio}</p>
     </div>
 
-    <p style="color: #718096; font-size: .85rem; margin: 0 0 6px;">Presenta este código en recepción para recibir tu premio. Válido por <strong>30 días</strong>.</p>
+    <p style="color: #718096; font-size: .85rem; margin: 0 0 6px;">El equipo de recepción te lo entregará en tu estancia. ¡Gracias por ser parte del programa!</p>
     <p style="color: #a0aec0; font-size: .8rem; margin: 0;">Si tienes dudas, contáctanos en recepción o por WhatsApp.</p>
   `);
 
