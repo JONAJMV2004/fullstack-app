@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { supabase } = require('../config/supabase');
 const UsuarioModel = require('../models/usuarioModel');
+const PuntosModel = require('../models/puntosModel');
 const { JWT_SECRET } = require('../middleware/auth');
 
 const SALT_ROUNDS = 12;
@@ -63,6 +64,14 @@ exports.register = async (req, res) => {
       telefono: normalizedPhone,
       passwordHash,
     });
+
+    // Regalo de bienvenida: 1 punto por registro
+    await PuntosModel.addEntry({
+      usuarioId: usuario.id,
+      descripcion: 'Bienvenida al programa de lealtad',
+      puntos: 1,
+    }).catch(e => console.error('Error asignando punto de bienvenida:', e.message));
+
     const token = signToken(usuario);
 
     return res.status(201).json({
@@ -167,6 +176,15 @@ exports.oauthCallback = async (req, res) => {
       avatarUrl,
       supabaseAuthId: supaUser.id,
     });
+
+    // Regalo de bienvenida: 1 punto por registro OAuth
+    if (isNewUser) {
+      await PuntosModel.addEntry({
+        usuarioId: usuario.id,
+        descripcion: 'Bienvenida al programa de lealtad',
+        puntos: 1,
+      }).catch(e => console.error('Error asignando punto de bienvenida OAuth:', e.message));
+    }
 
     const token = signToken(usuario);
 
