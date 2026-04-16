@@ -1,7 +1,7 @@
-const { Resend } = require('resend');
+const sgMail = require('@sendgrid/mail');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = 'Cielito Home <onboarding@resend.dev>';
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const FROM = 'cielitohome101@gmail.com';
 
 function plantillaBase(contenido) {
   return `
@@ -52,7 +52,7 @@ async function enviarCorreoEstanciaAprobada({ email, nombre, checkIn, checkOut, 
     <p style="color: #718096; font-size: .85rem; margin: 0;">Ingresa a la app para ver tu saldo actualizado y canjear tus puntos por premios.</p>
   `);
 
-  await resend.emails.send({ from: FROM, to: email, subject: '✅ Tu estadía en Cielito Home fue confirmada', html });
+  await sgMail.send({ from: FROM, to: email, subject: '✅ Tu estadía en Cielito Home fue confirmada', html });
 }
 
 async function enviarCorreoCanjeAprobado({ email, nombre, premio, codigoUnico }) {
@@ -73,7 +73,7 @@ async function enviarCorreoCanjeAprobado({ email, nombre, premio, codigoUnico })
     <p style="color: #a0aec0; font-size: .8rem; margin: 0;">Si tienes dudas, contáctanos en recepción o por WhatsApp.</p>
   `);
 
-  await resend.emails.send({ from: FROM, to: email, subject: '🎁 Tu canje en Cielito Home fue aprobado', html });
+  await sgMail.send({ from: FROM, to: email, subject: '🎁 Tu canje en Cielito Home fue aprobado', html });
 }
 
 async function enviarCorreoMarketing({ emails, asunto, mensaje, imagenUrl }) {
@@ -93,7 +93,7 @@ async function enviarCorreoMarketing({ emails, asunto, mensaje, imagenUrl }) {
   const resultados = { enviados: 0, fallidos: 0 };
   for (const email of emails) {
     try {
-      await resend.emails.send({ from: FROM, to: email, subject: asunto, html });
+      await sgMail.send({ from: FROM, to: email, subject: asunto, html });
       resultados.enviados++;
     } catch (err) {
       console.error(`Error enviando a ${email}:`, err.message);
@@ -141,7 +141,7 @@ async function enviarCorreoNuevoCanje({ nombreCliente, emailCliente, premio, pun
     <p style="color: #718096; font-size: .85rem; margin: 0;">Ingresa al panel de administración para aprobar o rechazar este canje.</p>
   `);
 
-  await resend.emails.send({ from: FROM, to: process.env.GMAIL_USER, subject: `🎁 Nuevo canje: ${premio} — ${nombreCliente}`, html });
+  await sgMail.send({ from: FROM, to: process.env.GMAIL_USER, subject: `🎁 Nuevo canje: ${premio} — ${nombreCliente}`, html });
 }
 
 async function enviarCorreoCanjeEntregado({ email, nombre, premio }) {
@@ -157,7 +157,7 @@ async function enviarCorreoCanjeEntregado({ email, nombre, premio }) {
     <p style="color: #718096; font-size: .85rem; margin: 0;">Gracias por ser parte del programa de lealtad de Cielito Home. ¡Nos vemos pronto! 🏡</p>
   `);
 
-  await resend.emails.send({ from: FROM, to: email, subject: '🎉 Tu premio de Cielito Home fue entregado', html });
+  await sgMail.send({ from: FROM, to: email, subject: '🎉 Tu premio de Cielito Home fue entregado', html });
 }
 
 module.exports = { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing, enviarCorreoNuevoCanje, enviarCorreoCanjeEntregado };
