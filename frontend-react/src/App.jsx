@@ -16,6 +16,8 @@ import OAuthCallbackPage from './pages/OAuthCallbackPage'
 import CambiarPasswordPage from './pages/CambiarPasswordPage'
 import EditarPerfilPage from './pages/EditarPerfilPage'
 import NotificacionesPage from './pages/NotificacionesPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import DataDeletionPage from './pages/DataDeletionPage'
 
 import AdminReportesPage from './pages/admin/AdminReportesPage'
 import AdminUsuariosPage from './pages/admin/AdminUsuariosPage'
@@ -57,6 +59,10 @@ export default function App() {
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/oauth-callback" element={<OAuthCallbackPage />} />
       <Route path="/oauth-callback.html" element={<OAuthCallbackPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/politica-privacidad" element={<PrivacyPolicyPage />} />
+      <Route path="/data-deletion" element={<DataDeletionPage />} />
+      <Route path="/eliminacion-datos" element={<DataDeletionPage />} />
 
       <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
       <Route path="/recompensas" element={<ProtectedRoute><RecompensasPage /></ProtectedRoute>} />

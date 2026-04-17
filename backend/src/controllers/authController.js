@@ -8,6 +8,43 @@ const { JWT_SECRET } = require('../middleware/auth');
 const SALT_ROUNDS = 12;
 const TOKEN_EXPIRES_IN = '7d';
 const MIN_PASSWORD_LENGTH = 8;
+const FACEBOOK_GRAPH_API_BASE = 'https://graph.facebook.com';
+
+function normalizeOrigin(value) {
+  return String(value || '').trim().replace(/\/$/, '');
+}
+
+function isLocalDevOrigin(url) {
+  return ['localhost', '127.0.0.1'].includes(url.hostname);
+}
+
+function getSafeRedirectTo(req) {
+  const fallback = String(process.env.OAUTH_REDIRECT_URL || '').trim();
+  const requested = String(req.query.redirectTo || '').trim();
+
+  if (!requested) return fallback;
+
+  try {
+    const requestedUrl = new URL(requested);
+    const configuredOrigins = String(process.env.FRONTEND_URL || '')
+      .split(',')
+      .map(normalizeOrigin)
+      .filter(Boolean);
+
+    const requestedOrigin = normalizeOrigin(requestedUrl.origin);
+    const isAllowedConfiguredOrigin = configuredOrigins.includes(requestedOrigin);
+
+    if (isAllowedConfiguredOrigin) return requested;
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    const isAllowedDevOrigin = isDev && isLocalDevOrigin(requestedUrl);
+    if (isAllowedDevOrigin) return requested;
+
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function signToken(usuario) {
   return jwt.sign(
@@ -27,6 +64,38 @@ function sanitizeUser(usuario) {
     tipo_usuario: usuario.tipo_usuario,
     avatar_url: usuario.avatar_url,
   };
+}
+
+async function fetchFacebookDebugToken({ userAccessToken, appId, appSecret }) {
+  const appAccessToken = `${appId}|${appSecret}`;
+  const params = new URLSearchParams({
+    input_token: userAccessToken,
+    access_token: appAccessToken,
+  });
+
+  const response = await fetch(`${FACEBOOK_GRAPH_API_BASE}/debug_token?${params.toString()}`);
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(`Facebook debug_token failed (${response.status}): ${raw}`);
+  }
+
+  const payload = await response.json();
+  return payload?.data || null;
+}
+
+async function fetchFacebookProfile(userAccessToken) {
+  const params = new URLSearchParams({
+    fields: 'id,name,email,picture.type(large)',
+    access_token: userAccessToken,
+  });
+
+  const response = await fetch(`${FACEBOOK_GRAPH_API_BASE}/me?${params.toString()}`);
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(`Facebook me endpoint failed (${response.status}): ${raw}`);
+  }
+
+  return response.json();
 }
 
 // POST /api/auth/register
@@ -118,9 +187,10 @@ exports.login = async (req, res) => {
 // GET /api/auth/oauth/google
 exports.googleOAuthUrl = async (req, res) => {
   try {
+    const redirectTo = getSafeRedirectTo(req);
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: process.env.OAUTH_REDIRECT_URL },
+      options: { redirectTo },
     });
     if (error) throw error;
     return res.status(200).json({ url: data.url });
@@ -133,15 +203,87 @@ exports.googleOAuthUrl = async (req, res) => {
 // GET /api/auth/oauth/facebook
 exports.facebookOAuthUrl = async (req, res) => {
   try {
+    const redirectTo = getSafeRedirectTo(req);
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',
-      options: { redirectTo: process.env.OAUTH_REDIRECT_URL },
+      options: { redirectTo },
     });
     if (error) throw error;
     return res.status(200).json({ url: data.url });
   } catch (err) {
     console.error('Facebook OAuth error:', err);
     return res.status(500).json({ error: 'Error al iniciar login con Facebook.' });
+  }
+};
+
+// POST /api/auth/oauth/facebook/token
+exports.facebookTokenLogin = async (req, res) => {
+  try {
+    const { access_token } = req.body;
+
+    if (!access_token)
+      return res.status(400).json({ error: 'access_token es requerido.' });
+
+    const fbAppId = String(process.env.FACEBOOK_APP_ID || '').trim();
+    const fbAppSecret = String(process.env.FACEBOOK_APP_SECRET || '').trim();
+
+    if (!fbAppId || !fbAppSecret)
+      return res.status(500).json({ error: 'Falta configurar FACEBOOK_APP_ID/FACEBOOK_APP_SECRET en backend.' });
+
+    const debugData = await fetchFacebookDebugToken({
+      userAccessToken: access_token,
+      appId: fbAppId,
+      appSecret: fbAppSecret,
+    });
+
+    if (!debugData?.is_valid)
+      return res.status(401).json({ error: 'El token de Facebook no es valido o ya expiro.' });
+
+    if (String(debugData.app_id || '') !== fbAppId)
+      return res.status(401).json({ error: 'El token no pertenece a esta aplicacion de Facebook.' });
+
+    const profile = await fetchFacebookProfile(access_token);
+    const email = String(profile?.email || '').trim().toLowerCase();
+
+    if (!email)
+      return res.status(400).json({ error: 'Facebook no devolvio email. Revisa permisos public_profile,email y app en modo live.' });
+
+    const nombre = String(profile?.name || email.split('@')[0]).trim();
+    const avatarUrl = profile?.picture?.data?.url || null;
+    const supabaseAuthId = `facebook:${profile?.id || debugData.user_id || 'unknown'}`;
+
+    const { user: usuario, isNewUser } = await UsuarioModel.upsertOAuth({
+      nombre,
+      email,
+      provider: 'facebook',
+      avatarUrl,
+      supabaseAuthId,
+    });
+
+    if (isNewUser) {
+      await PuntosModel.addEntry({
+        usuarioId: usuario.id,
+        descripcion: 'Bienvenida al programa de lealtad',
+        puntos: 1,
+      }).catch(e => console.error('Error asignando punto de bienvenida Facebook SDK:', e.message));
+    }
+
+    const token = signToken(usuario);
+
+    return res.status(200).json({
+      message: 'Login con Facebook exitoso.',
+      token,
+      is_new_user: !!isNewUser,
+      user: sanitizeUser(usuario),
+    });
+  } catch (err) {
+    console.error('Facebook token login error:', err.message);
+    const isGraphFailure = String(err.message || '').includes('Facebook ');
+    return res.status(isGraphFailure ? 502 : 500).json({
+      error: isGraphFailure
+        ? `Facebook rechazo la autenticacion: ${err.message}`
+        : 'Error del servidor al autenticar con Facebook.',
+    });
   }
 };
 

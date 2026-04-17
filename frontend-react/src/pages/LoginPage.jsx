@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import CielitoLogo from '../components/CielitoLogo'
 import Alert from '../components/Alert'
-import { GoogleIcon, FacebookIcon, InstagramIcon, handleOAuthLogin } from '../components/SocialAuth'
+import { GoogleIcon, FacebookIcon, InstagramIcon, handleOAuthLogin, handleFacebookSdkLogin } from '../components/SocialAuth'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -109,10 +109,25 @@ export default function LoginPage() {
           <button type="button" className="btn-ch-social" onClick={() => handleOAuthLogin('google', setAlert)}>
             <GoogleIcon /> INGRESA CON GOOGLE
           </button>
-          <button type="button" className="btn-ch-social" onClick={() => handleOAuthLogin('facebook', setAlert)}>
+          <button
+            type="button"
+            className="btn-ch-social"
+            onClick={() => handleFacebookSdkLogin({
+              setAlert,
+              saveSession,
+              onSuccess: (data) => {
+                const pending = sessionStorage.getItem('pendingRedirect')
+                sessionStorage.removeItem('pendingRedirect')
+                const destino = data?.user?.tipo_usuario === 'admin'
+                  ? '/admin/reportes'
+                  : (pending || '/home')
+                setTimeout(() => navigate(destino), 600)
+              },
+            })}
+          >
             <FacebookIcon /> INGRESA CON FACEBOOK
           </button>
-          <button type="button" className="btn-ch-social" onClick={() => handleOAuthLogin('facebook', setAlert)}>
+          <button type="button" className="btn-ch-social" onClick={() => setAlert({ message: 'Instagram login estara disponible pronto.', type: 'error' })}>
             <InstagramIcon /> INGRESA CON INSTAGRAM
           </button>
         </div>

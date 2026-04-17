@@ -10,6 +10,7 @@ router.post('/login', authController.login);
 // OAuth — get redirect URLs
 router.get('/oauth/google', authController.googleOAuthUrl);
 router.get('/oauth/facebook', authController.facebookOAuthUrl);
+router.post('/oauth/facebook/token', authController.facebookTokenLogin);
 
 // OAuth — exchange Supabase session tokens for app JWT
 router.post('/oauth/callback', authController.oauthCallback);

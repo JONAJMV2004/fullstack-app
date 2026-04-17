@@ -1,5 +1,138 @@
 import { API_BASE } from '../context/AuthContext'
 
+const FB_SDK_ID = 'facebook-jssdk'
+const FB_API_VERSION = import.meta.env.VITE_FACEBOOK_API_VERSION || 'v20.0'
+const FB_APP_ID = (import.meta.env.VITE_FACEBOOK_APP_ID || '').trim()
+
+function isHttpsPage() {
+  return typeof window !== 'undefined' && window.location.protocol === 'https:'
+}
+
+function waitForFbReady(timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now()
+    const timer = setInterval(() => {
+      if (window.FB && typeof window.FB.init === 'function') {
+        clearInterval(timer)
+        resolve(window.FB)
+        return
+      }
+
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(timer)
+        reject(new Error('Facebook SDK timeout'))
+      }
+    }, 50)
+  })
+}
+
+async function ensureFacebookSdk() {
+  if (!FB_APP_ID) {
+    throw new Error('Falta VITE_FACEBOOK_APP_ID en el frontend.')
+  }
+
+  if (!document.getElementById('fb-root')) {
+    const root = document.createElement('div')
+    root.id = 'fb-root'
+    document.body.prepend(root)
+  }
+
+  if (window.FB && typeof window.FB.init === 'function') {
+    return window.FB
+  }
+
+  window.fbAsyncInit = function initFacebookSdk() {
+    window.FB.init({
+      appId: FB_APP_ID,
+      cookie: true,
+      xfbml: true,
+      version: FB_API_VERSION,
+    })
+
+    if (window.FB?.AppEvents?.logPageView) {
+      window.FB.AppEvents.logPageView()
+    }
+  }
+
+  if (!document.getElementById(FB_SDK_ID)) {
+    const js = document.createElement('script')
+    js.id = FB_SDK_ID
+    js.src = 'https://connect.facebook.net/en_US/sdk.js'
+    js.async = true
+    js.defer = true
+    document.body.appendChild(js)
+  }
+
+  return waitForFbReady()
+}
+
+function getFacebookLoginStatus(FB) {
+  return new Promise((resolve) => {
+    FB.getLoginStatus((response) => resolve(response))
+  })
+}
+
+function loginWithFacebook(FB) {
+  return new Promise((resolve) => {
+    FB.login(
+      (response) => resolve(response),
+      { scope: 'public_profile,email' }
+    )
+  })
+}
+
+export async function handleFacebookSdkLogin({ setAlert, saveSession, onSuccess, onNewUser }) {
+  try {
+    // Facebook Login with JS SDK requires HTTPS pages.
+    if (!isHttpsPage()) {
+      setAlert({ message: 'Facebook requiere HTTPS en web. Redirigiendo al flujo OAuth...', type: 'error' })
+      await handleOAuthLogin('facebook', setAlert)
+      return
+    }
+
+    const FB = await ensureFacebookSdk()
+
+    let response = await getFacebookLoginStatus(FB)
+    if (response.status !== 'connected') {
+      response = await loginWithFacebook(FB)
+    }
+
+    if (response.status !== 'connected' || !response.authResponse?.accessToken) {
+      setAlert({ message: 'No se completo el inicio de sesion con Facebook.', type: 'error' })
+      return
+    }
+
+    const res = await fetch(`${API_BASE}/auth/oauth/facebook/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: response.authResponse.accessToken }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      setAlert({ message: data.error || 'Error al autenticar con Facebook.', type: 'error' })
+      return
+    }
+
+    if (typeof onNewUser === 'function' && data?.is_new_user && data?.user?.id) {
+      onNewUser(data.user.id)
+    }
+
+    if (typeof saveSession === 'function') {
+      saveSession(data.token, data.user)
+    }
+
+    setAlert({ message: 'Sesion iniciada con Facebook.', type: 'success' })
+    if (typeof onSuccess === 'function') {
+      onSuccess(data)
+    }
+  } catch (err) {
+    console.error('Facebook SDK login error:', err)
+    setAlert({ message: 'No se pudo usar Facebook SDK. Intentando flujo OAuth...', type: 'error' })
+    await handleOAuthLogin('facebook', setAlert)
+  }
+}
+
 export function GoogleIcon() {
   return (
     <svg viewBox="0 0 48 48" width="22" height="22">
@@ -48,7 +181,9 @@ export function AppleIcon() {
 
 export async function handleOAuthLogin(provider, setAlert) {
   try {
-    const res = await fetch(`${API_BASE}/auth/oauth/${provider}`)
+    const redirectTo = `${window.location.origin}/oauth-callback`
+    const url = `${API_BASE}/auth/oauth/${provider}?redirectTo=${encodeURIComponent(redirectTo)}`
+    const res = await fetch(url)
     const data = await res.json()
     if (data.url) {
       window.location.href = data.url

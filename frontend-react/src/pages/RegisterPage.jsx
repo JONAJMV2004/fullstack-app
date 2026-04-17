@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth, API_BASE } from '../context/AuthContext'
 import CielitoLogo from '../components/CielitoLogo'
 import Alert from '../components/Alert'
-import { GoogleIcon, FacebookIcon, InstagramIcon, handleOAuthLogin } from '../components/SocialAuth'
+import { GoogleIcon, FacebookIcon, InstagramIcon, handleOAuthLogin, handleFacebookSdkLogin } from '../components/SocialAuth'
 
 const PWA_NEW_USER_KEY = 'pwa_prompt_new_user'
 
@@ -146,10 +146,19 @@ export default function RegisterPage() {
           <button type="button" className="btn-ch-icon" onClick={() => handleOAuthLogin('google', setAlert)}>
             <GoogleIcon />
           </button>
-          <button type="button" className="btn-ch-icon" onClick={() => handleOAuthLogin('facebook', setAlert)}>
+          <button
+            type="button"
+            className="btn-ch-icon"
+            onClick={() => handleFacebookSdkLogin({
+              setAlert,
+              saveSession,
+              onNewUser: (userId) => localStorage.setItem(PWA_NEW_USER_KEY, String(userId)),
+              onSuccess: () => setTimeout(() => navigate('/home'), 600),
+            })}
+          >
             <FacebookIcon />
           </button>
-          <button type="button" className="btn-ch-icon" onClick={() => handleOAuthLogin('facebook', setAlert)}>
+          <button type="button" className="btn-ch-icon" onClick={() => setAlert({ message: 'Instagram login estara disponible pronto.', type: 'error' })}>
             <InstagramIcon />
           </button>
         </div>

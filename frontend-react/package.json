@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --host localhost --port 5173 --strictPort",
     "build": "node ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview"
   },
