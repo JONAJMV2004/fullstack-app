@@ -7,6 +7,10 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function isUUID(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+
 const UsuarioModel = {
   async findByEmail(email) {
     const normalizedEmail = normalizeEmail(email);
@@ -64,6 +68,10 @@ const UsuarioModel = {
     const normalizedEmail = normalizeEmail(email);
     const existing = await this.findByEmail(normalizedEmail);
 
+    // supabase_auth_id column is UUID type — only set it when the value is a real UUID
+    // (Facebook SDK login generates "facebook:xxx" which is not a UUID)
+    const authIdPayload = isUUID(supabaseAuthId) ? { supabase_auth_id: supabaseAuthId } : {};
+
     if (existing) {
       const { data, error } = await supabaseAdmin
         .from(TABLE)
@@ -71,7 +79,7 @@ const UsuarioModel = {
           nombre,
           provider,
           avatar_url: avatarUrl,
-          supabase_auth_id: supabaseAuthId,
+          ...authIdPayload,
         })
         .eq('id', existing.id)
         .select(PUBLIC_FIELDS)
@@ -88,7 +96,7 @@ const UsuarioModel = {
         email: normalizedEmail,
         provider,
         avatar_url: avatarUrl,
-        supabase_auth_id: supabaseAuthId,
+        ...authIdPayload,
         tipo_usuario: 'cliente',
       }])
       .select(PUBLIC_FIELDS)
