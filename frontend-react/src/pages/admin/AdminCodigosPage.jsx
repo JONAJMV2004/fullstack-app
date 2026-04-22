@@ -26,11 +26,13 @@ export default function AdminCodigosPage() {
     const ingreso = formatDate(c.fecha_ingreso)
     const salida = formatDate(c.fecha_salida)
     const mensaje =
-      `Hola, gracias por hospedarte en Cielito Home.\n\n` +
+      `Hola, gracias por hospedarte en Cielito Home ✨\n\n` +
+      `¿Ya conoces nuestro nuevo programa de lealtad? \n\n🤍 Te invitamos a ingresar y comenzar a acumular y canjear tus puntos por increíbles premios durante tus estancias.
+      \n\n` +
       `Aqui tienes tu codigo de estadía para acumular tus puntos:\n\n` +
-      `Ubicacion: ${c.ubicacion}\n` +
-      `Llegada: ${ingreso}  |  Salida: ${salida}\n` +
-      `Noches: ${c.noches}  |  Puntos: ${c.puntos}\n\n` +
+      `📍 Ubicación: ${c.ubicacion}\n` +
+      `📅 Llegada: ${ingreso}  |  📅Salida: ${salida}\n` +
+      `🌙 Noches: ${c.noches}  |  ⭐ Puntos: ${c.puntos}\n\n` +
       `Ingresa al siguiente enlace y tus puntos se agregaran automaticamente:\n` +
       `${url}`
 
