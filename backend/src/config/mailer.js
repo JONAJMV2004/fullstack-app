@@ -1,7 +1,18 @@
-const sgMail = require('@sendgrid/mail');
+const nodemailer = require('nodemailer');
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-const FROM = 'cielitohome101@gmail.com';
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
+
+const FROM = `"Cielito Home" <${process.env.GMAIL_USER}>`;
+
+async function enviarMail({ to, subject, html }) {
+  await transporter.sendMail({ from: FROM, to, subject, html });
+}
 
 function plantillaBase(contenido) {
   return `
@@ -52,7 +63,7 @@ async function enviarCorreoEstanciaAprobada({ email, nombre, checkIn, checkOut, 
     <p style="color: #718096; font-size: .85rem; margin: 0;">Ingresa a la app para ver tu saldo actualizado y canjear tus puntos por premios.</p>
   `);
 
-  await sgMail.send({ from: FROM, to: email, subject: '✅ Tu estadía en Cielito Home fue confirmada', html });
+  await enviarMail({ to: email, subject: '✅ Tu estadía en Cielito Home fue confirmada', html });
 }
 
 async function enviarCorreoCanjeAprobado({ email, nombre, premio }) {
@@ -69,7 +80,7 @@ async function enviarCorreoCanjeAprobado({ email, nombre, premio }) {
     <p style="color: #a0aec0; font-size: .8rem; margin: 0;">Si tienes dudas, contáctanos en recepción o por WhatsApp.</p>
   `);
 
-  await sgMail.send({ from: FROM, to: email, subject: '🎁 Tu canje en Cielito Home fue aprobado', html });
+  await enviarMail({ to: email, subject: '🎁 Tu canje en Cielito Home fue aprobado', html });
 }
 
 async function enviarCorreoMarketing({ emails, asunto, mensaje, imagenUrl }) {
@@ -89,7 +100,7 @@ async function enviarCorreoMarketing({ emails, asunto, mensaje, imagenUrl }) {
   const resultados = { enviados: 0, fallidos: 0 };
   for (const email of emails) {
     try {
-      await sgMail.send({ from: FROM, to: email, subject: asunto, html });
+      await enviarMail({ to: email, subject: asunto, html });
       resultados.enviados++;
     } catch (err) {
       console.error(`Error enviando a ${email}:`, err.message);
@@ -137,7 +148,7 @@ async function enviarCorreoNuevoCanje({ nombreCliente, emailCliente, premio, pun
     <p style="color: #718096; font-size: .85rem; margin: 0;">Ingresa al panel de administración para aprobar o rechazar este canje.</p>
   `);
 
-  await sgMail.send({ from: FROM, to: process.env.GMAIL_USER, subject: `🎁 Nuevo canje: ${premio} — ${nombreCliente}`, html });
+  await enviarMail({ to: process.env.GMAIL_USER, subject: `🎁 Nuevo canje: ${premio} — ${nombreCliente}`, html });
 }
 
 async function enviarCorreoCanjeEntregado({ email, nombre, premio }) {
@@ -153,7 +164,59 @@ async function enviarCorreoCanjeEntregado({ email, nombre, premio }) {
     <p style="color: #718096; font-size: .85rem; margin: 0;">Gracias por ser parte del programa de lealtad de Cielito Home. ¡Nos vemos pronto! 🏡</p>
   `);
 
-  await sgMail.send({ from: FROM, to: email, subject: '🎉 Tu premio de Cielito Home fue entregado', html });
+  await enviarMail({ to: email, subject: '🎉 Tu premio de Cielito Home fue entregado', html });
 }
 
-module.exports = { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing, enviarCorreoNuevoCanje, enviarCorreoCanjeEntregado };
+async function enviarCodigoVerificacionPassword({ email, nombre, codigo }) {
+  const html = plantillaBase(`
+    <p style="font-size: 1rem; color: #2d3748; margin: 0 0 8px;">Hola, <strong>${nombre}</strong> 👋</p>
+    <p style="color: #4a5568; margin: 0 0 20px;">Recibimos una solicitud para cambiar la contraseña de tu cuenta. Usa el siguiente código para confirmar el cambio:</p>
+
+    <div style="background: #f0fff4; border: 1.5px solid #c6f6d5; border-radius: 10px; padding: 24px 20px; margin-bottom: 20px; text-align: center;">
+      <p style="margin: 0 0 8px; font-size: .8rem; font-weight: 700; color: #276749; text-transform: uppercase; letter-spacing: .1em;">Código de verificación</p>
+      <p style="margin: 0; font-size: 2rem; font-weight: 800; color: #2D6A50; letter-spacing: 8px; font-family: monospace;">${codigo}</p>
+    </div>
+
+    <p style="color: #718096; font-size: .85rem; margin: 0 0 6px;">Este código expira en <strong>10 minutos</strong>.</p>
+    <p style="color: #a0aec0; font-size: .8rem; margin: 0;">Si no solicitaste este cambio, ignora este correo. Tu contraseña no será modificada.</p>
+  `);
+
+  await enviarMail({ to: email, subject: '🔒 Código de verificación — Cambio de contraseña', html });
+}
+
+async function enviarCodigoResetPassword({ email, nombre, codigo }) {
+  const html = plantillaBase(`
+    <p style="font-size: 1rem; color: #2d3748; margin: 0 0 8px;">Hola, <strong>${nombre}</strong> 👋</p>
+    <p style="color: #4a5568; margin: 0 0 20px;">Recibimos una solicitud para <strong>restablecer la contraseña</strong> de tu cuenta. Usa el siguiente código para continuar:</p>
+
+    <div style="background: #fff5f5; border: 1.5px solid #fed7d7; border-radius: 10px; padding: 24px 20px; margin-bottom: 20px; text-align: center;">
+      <p style="margin: 0 0 8px; font-size: .8rem; font-weight: 700; color: #c53030; text-transform: uppercase; letter-spacing: .1em;">Código de restablecimiento</p>
+      <p style="margin: 0; font-size: 2rem; font-weight: 800; color: #c53030; letter-spacing: 8px; font-family: monospace;">${codigo}</p>
+    </div>
+
+    <p style="color: #718096; font-size: .85rem; margin: 0 0 6px;">Este código expira en <strong>10 minutos</strong>.</p>
+    <p style="color: #a0aec0; font-size: .8rem; margin: 0;">Si no solicitaste esto, ignora este correo. Tu contraseña seguirá siendo la misma.</p>
+  `);
+
+  await enviarMail({ to: email, subject: '🔑 Restablecer contraseña — Cielito Home', html });
+}
+
+async function enviarCodigoRegistro({ email, nombre, codigo }) {
+  const html = plantillaBase(`
+    <p style="font-size: 1rem; color: #2d3748; margin: 0 0 8px;">Hola, <strong>${nombre}</strong> 👋</p>
+    <p style="color: #4a5568; margin: 0 0 20px;">Gracias por registrarte en <strong>Cielito Home</strong>. Usa el siguiente código para verificar tu correo electrónico y activar tu cuenta:</p>
+
+    <div style="background: #ebf8ff; border: 1.5px solid #bee3f8; border-radius: 10px; padding: 24px 20px; margin-bottom: 20px; text-align: center;">
+      <p style="margin: 0 0 8px; font-size: .8rem; font-weight: 700; color: #2b6cb0; text-transform: uppercase; letter-spacing: .1em;">Código de activación</p>
+      <p style="margin: 0; font-size: 2rem; font-weight: 800; color: #2b6cb0; letter-spacing: 8px; font-family: monospace;">${codigo}</p>
+    </div>
+
+    <p style="color: #718096; font-size: .85rem; margin: 0 0 6px;">Este código expira en <strong>10 minutos</strong>.</p>
+    <p style="color: #a0aec0; font-size: .8rem; margin: 0;">Si no creaste esta cuenta, ignora este correo.</p>
+  `);
+
+  await enviarMail({ to: email, subject: '✉️ Verifica tu correo — Cielito Home', html });
+}
+
+module.exports = { enviarCorreoEstanciaAprobada, enviarCorreoCanjeAprobado, enviarCorreoMarketing, enviarCorreoNuevoCanje, enviarCorreoCanjeEntregado, enviarCodigoVerificacionPassword, enviarCodigoResetPassword, enviarCodigoRegistro };
+

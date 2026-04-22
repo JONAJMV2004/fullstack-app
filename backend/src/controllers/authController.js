@@ -1,12 +1,30 @@
+const fetch = require('node-fetch');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { supabase } = require('../config/supabase');
 const UsuarioModel = require('../models/usuarioModel');
 const PuntosModel = require('../models/puntosModel');
 const { JWT_SECRET } = require('../middleware/auth');
+const { enviarCodigoVerificacionPassword, enviarCodigoResetPassword, enviarCodigoRegistro } = require('../config/mailer');
 
 const SALT_ROUNDS = 12;
 const TOKEN_EXPIRES_IN = '7d';
+const PASSWORD_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutos
+
+// Almacén en memoria: userId -> { code, expiresAt, attempts }
+const passwordVerifyCodes = new Map();
+
+// Almacén en memoria para reset (sin login): email -> { code, expiresAt, attempts }
+const passwordResetCodes = new Map();
+
+// Almacén en memoria para verificación de registro: email -> { code, expiresAt, attempts, nombre, telefono, passwordHash }
+const registerCodes = new Map();
+
+function generateNumericCode(length = 6) {
+  let code = '';
+  for (let i = 0; i < length; i++) code += Math.floor(Math.random() * 10);
+  return code;
+}
 const MIN_PASSWORD_LENGTH = 8;
 const FACEBOOK_GRAPH_API_BASE = 'https://graph.facebook.com';
 
@@ -98,7 +116,7 @@ async function fetchFacebookProfile(userAccessToken) {
   return response.json();
 }
 
-// POST /api/auth/register
+// POST /api/auth/register  →  envía código de verificación al email
 exports.register = async (req, res) => {
   try {
     const { nombre, name, email, password, telefono } = req.body;
@@ -126,15 +144,79 @@ exports.register = async (req, res) => {
     if (existing)
       return res.status(409).json({ error: 'Ya existe una cuenta con este email.' });
 
+    // Limitar frecuencia: 1 código cada 60 s por email
+    const existingCode = registerCodes.get(normalizedEmail);
+    if (existingCode && existingCode.expiresAt - Date.now() > PASSWORD_CODE_TTL_MS - 60_000) {
+      return res.status(429).json({ error: 'Ya se envió un código recientemente. Espera un momento.' });
+    }
+
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const usuario = await UsuarioModel.create({
+    const code = generateNumericCode(6);
+    registerCodes.set(normalizedEmail, {
+      code,
+      expiresAt: Date.now() + PASSWORD_CODE_TTL_MS,
+      attempts: 0,
       nombre: nombreFinal,
-      email: normalizedEmail,
       telefono: normalizedPhone,
       passwordHash,
     });
 
-    // Regalo de bienvenida: 1 punto por registro
+    try {
+      await enviarCodigoRegistro({ email: normalizedEmail, nombre: nombreFinal, codigo: code });
+    } catch (emailErr) {
+      console.error('[register] Error de email:', emailErr.message);
+      if (process.env.NODE_ENV !== 'development') throw emailErr;
+      console.log(`[DEV] Código de registro para ${normalizedEmail}: ${code}`);
+    }
+
+    return res.status(200).json({ message: `Código enviado a ${normalizedEmail}`, email: normalizedEmail });
+  } catch (err) {
+    console.error('Register error:', err.message);
+    return res.status(500).json({ error: 'Error del servidor al registrar.' });
+  }
+};
+
+// POST /api/auth/verify-register  →  valida código y crea la cuenta
+exports.verifyRegister = async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const { verificationCode } = req.body;
+
+    if (!email || !verificationCode)
+      return res.status(400).json({ error: 'Email y código son requeridos.' });
+
+    const entry = registerCodes.get(email);
+    if (!entry)
+      return res.status(400).json({ error: 'No hay un código activo para este email. Inicia el registro de nuevo.' });
+
+    if (Date.now() > entry.expiresAt) {
+      registerCodes.delete(email);
+      return res.status(400).json({ error: 'El código ha expirado. Inicia el registro de nuevo.' });
+    }
+
+    entry.attempts += 1;
+    if (entry.attempts > 5) {
+      registerCodes.delete(email);
+      return res.status(429).json({ error: 'Demasiados intentos. Inicia el registro de nuevo.' });
+    }
+
+    if (entry.code !== String(verificationCode).trim())
+      return res.status(400).json({ error: `Código incorrecto. Te quedan ${5 - entry.attempts} intentos.` });
+
+    registerCodes.delete(email);
+
+    // Doble verificación: el email no se haya registrado mientras esperaba
+    const existing = await UsuarioModel.findByEmail(email);
+    if (existing)
+      return res.status(409).json({ error: 'Ya existe una cuenta con este email.' });
+
+    const usuario = await UsuarioModel.create({
+      nombre: entry.nombre,
+      email,
+      telefono: entry.telefono,
+      passwordHash: entry.passwordHash,
+    });
+
     await PuntosModel.addEntry({
       usuarioId: usuario.id,
       descripcion: 'Bienvenida al programa de lealtad',
@@ -142,15 +224,14 @@ exports.register = async (req, res) => {
     }).catch(e => console.error('Error asignando punto de bienvenida:', e.message));
 
     const token = signToken(usuario);
-
     return res.status(201).json({
-      message: 'Registro exitoso.',
+      message: 'Cuenta creada exitosamente.',
       token,
       user: sanitizeUser(usuario),
     });
   } catch (err) {
-    console.error('Register error:', err.message);
-    return res.status(500).json({ error: 'Error del servidor al registrar.' });
+    console.error('VerifyRegister error:', err.message);
+    return res.status(500).json({ error: 'Error del servidor al crear la cuenta.' });
   }
 };
 
@@ -366,8 +447,8 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// PUT /api/auth/update-password  (protegida)
-exports.updatePassword = async (req, res) => {
+// POST /api/auth/send-password-code  (protegida)
+exports.sendPasswordCode = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -391,6 +472,87 @@ exports.updatePassword = async (req, res) => {
     if (!isValidCurrentPassword)
       return res.status(401).json({ error: 'La contraseña actual no es correcta.' });
 
+    // Limitar frecuencia: un solo código activo por usuario
+    const existing = passwordVerifyCodes.get(req.user.id);
+    if (existing && existing.expiresAt - Date.now() > PASSWORD_CODE_TTL_MS - 60_000) {
+      return res.status(429).json({ error: 'Ya se envió un código recientemente. Espera un momento antes de solicitar otro.' });
+    }
+
+    const code = generateNumericCode(6);
+    passwordVerifyCodes.set(req.user.id, {
+      code,
+      expiresAt: Date.now() + PASSWORD_CODE_TTL_MS,
+      attempts: 0,
+    });
+
+    const usuarioCompleto = await UsuarioModel.findById(req.user.id);
+    try {
+      await enviarCodigoVerificacionPassword({
+        email: usuario.email,
+        nombre: usuarioCompleto?.nombre || 'Usuario',
+        codigo: code,
+      });
+    } catch (emailErr) {
+      console.error('[sendPasswordCode] Error de email:', emailErr.message);
+      if (process.env.NODE_ENV !== 'development') throw emailErr;
+      console.log(`[DEV] Código de verificación para ${usuario.email}: ${code}`);
+    }
+
+    return res.status(200).json({ message: `Código enviado a ${usuario.email}` });
+  } catch (err) {
+    console.error('SendPasswordCode error:', err.message);
+    return res.status(500).json({ error: 'Error al enviar el código de verificación.' });
+  }
+};
+
+// PUT /api/auth/update-password  (protegida)
+exports.updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, verificationCode } = req.body;
+
+    if (!currentPassword || !newPassword || !verificationCode)
+      return res.status(400).json({ error: 'Todos los campos son requeridos, incluyendo el código de verificación.' });
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH)
+      return res.status(400).json({ error: `La nueva contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.` });
+
+    if (currentPassword === newPassword)
+      return res.status(400).json({ error: 'La nueva contraseña debe ser diferente a la actual.' });
+
+    // Validar código
+    const entry = passwordVerifyCodes.get(req.user.id);
+    if (!entry)
+      return res.status(400).json({ error: 'No hay un código de verificación activo. Solicita uno nuevo.' });
+
+    if (Date.now() > entry.expiresAt) {
+      passwordVerifyCodes.delete(req.user.id);
+      return res.status(400).json({ error: 'El código de verificación ha expirado. Solicita uno nuevo.' });
+    }
+
+    entry.attempts += 1;
+    if (entry.attempts > 5) {
+      passwordVerifyCodes.delete(req.user.id);
+      return res.status(429).json({ error: 'Demasiados intentos. Solicita un nuevo código.' });
+    }
+
+    if (entry.code !== String(verificationCode).trim()) {
+      return res.status(400).json({ error: `Código incorrecto. Te quedan ${5 - entry.attempts} intentos.` });
+    }
+
+    // Código válido — eliminar del store
+    passwordVerifyCodes.delete(req.user.id);
+
+    const usuario = await UsuarioModel.findAuthById(req.user.id);
+    if (!usuario)
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+    if (!usuario.password_hash)
+      return res.status(400).json({ error: 'Tu cuenta usa inicio de sesión social y no tiene contraseña local.' });
+
+    const isValidCurrentPassword = await bcrypt.compare(currentPassword, usuario.password_hash);
+    if (!isValidCurrentPassword)
+      return res.status(401).json({ error: 'La contraseña actual no es correcta.' });
+
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
     await UsuarioModel.update(usuario.id, { passwordHash });
 
@@ -398,5 +560,94 @@ exports.updatePassword = async (req, res) => {
   } catch (err) {
     console.error('UpdatePassword error:', err.message);
     return res.status(500).json({ error: 'Error del servidor al actualizar la contraseña.' });
+  }
+};
+
+// POST /api/auth/forgot-password  (pública)
+exports.forgotPassword = async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'El email es requerido.' });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email))
+      return res.status(400).json({ error: 'Email inválido.' });
+
+    // Siempre responder igual para no revelar si el email existe
+    const usuario = await UsuarioModel.findByEmail(email);
+    if (usuario && usuario.password_hash) {
+      // Limitar frecuencia: 1 código cada 60 s por email
+      const existing = passwordResetCodes.get(email);
+      if (existing && existing.expiresAt - Date.now() > PASSWORD_CODE_TTL_MS - 60_000) {
+        return res.status(429).json({ error: 'Ya se envió un código recientemente. Espera un momento.' });
+      }
+
+      const code = generateNumericCode(6);
+      passwordResetCodes.set(email, {
+        code,
+        expiresAt: Date.now() + PASSWORD_CODE_TTL_MS,
+        attempts: 0,
+      });
+
+      try {
+        await enviarCodigoResetPassword({ email, nombre: usuario.nombre, codigo: code });
+      } catch (emailErr) {
+        console.error('[forgotPassword] Error de email:', emailErr.message);
+        if (process.env.NODE_ENV !== 'development') throw emailErr;
+        console.log(`[DEV] Código de restablecimiento para ${email}: ${code}`);
+      }
+    }
+
+    return res.status(200).json({ message: 'Si ese email está registrado, recibirás un código de verificación.' });
+  } catch (err) {
+    console.error('ForgotPassword error:', err.message);
+    return res.status(500).json({ error: 'Error del servidor.' });
+  }
+};
+
+// POST /api/auth/reset-password  (pública)
+exports.resetPassword = async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const { verificationCode, newPassword } = req.body;
+
+    if (!email || !verificationCode || !newPassword)
+      return res.status(400).json({ error: 'Todos los campos son requeridos.' });
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH)
+      return res.status(400).json({ error: `La nueva contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.` });
+
+    const entry = passwordResetCodes.get(email);
+    if (!entry)
+      return res.status(400).json({ error: 'No hay un código activo para este email. Solicita uno nuevo.' });
+
+    if (Date.now() > entry.expiresAt) {
+      passwordResetCodes.delete(email);
+      return res.status(400).json({ error: 'El código ha expirado. Solicita uno nuevo.' });
+    }
+
+    entry.attempts += 1;
+    if (entry.attempts > 5) {
+      passwordResetCodes.delete(email);
+      return res.status(429).json({ error: 'Demasiados intentos. Solicita un nuevo código.' });
+    }
+
+    if (entry.code !== String(verificationCode).trim()) {
+      return res.status(400).json({ error: `Código incorrecto. Te quedan ${5 - entry.attempts} intentos.` });
+    }
+
+    passwordResetCodes.delete(email);
+
+    const usuario = await UsuarioModel.findByEmail(email);
+    if (!usuario || !usuario.password_hash)
+      return res.status(404).json({ error: 'Usuario no encontrado o usa inicio de sesión social.' });
+
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await UsuarioModel.update(usuario.id, { passwordHash });
+
+    return res.status(200).json({ message: 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.' });
+  } catch (err) {
+    console.error('ResetPassword error:', err.message);
+    return res.status(500).json({ error: 'Error del servidor al restablecer la contraseña.' });
   }
 };

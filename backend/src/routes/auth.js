@@ -5,7 +5,12 @@ const { verifyToken } = require('../middleware/auth');
 
 // Local email/password auth
 router.post('/register', authController.register);
+router.post('/verify-register', authController.verifyRegister);
 router.post('/login', authController.login);
+
+// Forgot / reset password (públicas)
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
 
 // OAuth — get redirect URLs
 router.get('/oauth/google', authController.googleOAuthUrl);
@@ -20,6 +25,7 @@ router.get('/me',    verifyToken, authController.getMe);
 router.delete('/me', verifyToken, authController.deleteMe);
 
 // Protected: update user password
+router.post('/send-password-code', verifyToken, authController.sendPasswordCode);
 router.put('/update-password', verifyToken, authController.updatePassword);
 
 module.exports = router;
