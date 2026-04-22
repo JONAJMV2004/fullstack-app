@@ -12,6 +12,9 @@ const notificacionRoutes = require('./routes/notificaciones');
 
 const app = express();
 
+// ─── Trust proxy (Render / reverse proxies) ──────────────────────────────────
+app.set('trust proxy', 1);
+
 // ─── Security headers ────────────────────────────────────────────────────────
 app.use(helmet());
 
