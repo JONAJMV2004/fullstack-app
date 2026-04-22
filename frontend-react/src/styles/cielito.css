@@ -2201,6 +2201,44 @@ body {
   white-space: nowrap;
 }
 
+/* Verification code input */
+.settings-input-wrap .code-input {
+  letter-spacing: 6px;
+  font-size: 1.4rem;
+  text-align: center;
+  font-weight: 700;
+  padding-right: 16px;
+}
+
+/* Ghost / outline button */
+.btn-ch-ghost {
+  width: 100%;
+  padding: 15px;
+  background: transparent;
+  color: var(--green);
+  border: 1.5px solid var(--green);
+  border-radius: var(--radius-pill);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.btn-ch-ghost:hover:not(:disabled) {
+  background: rgba(45,106,80,0.06);
+}
+
+.btn-ch-ghost:disabled {
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 /* Profile avatar (large) */
 .profile-avatar-large {
   width: 80px;

@@ -2,7 +2,6 @@ export default function CielitoLogo({ size = 48, strokeColor = '#2D6A50', stroke
   return (
     <img
       src="./LOGO_CH.png"
-      alt="Cielito Home"
       style={{ width: 82, height: 52, objectFit: 'contain', display: 'block', margin: '0 auto' }}
     />
   )

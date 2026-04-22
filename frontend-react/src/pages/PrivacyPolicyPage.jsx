@@ -1,69 +1,87 @@
 import { Link } from 'react-router-dom'
+import CielitoLogo from '../components/CielitoLogo'
+
+const S = { width: '100%', background: 'var(--bg)', borderRadius: 'var(--radius-card)', padding: '16px 18px' }
+const H = { margin: '0 0 8px', fontSize: '0.95rem', color: 'var(--green-dark)', fontWeight: 600 }
+const P = { margin: 0, fontSize: '0.85rem', color: '#718096', lineHeight: 1.65 }
+const A = { color: 'var(--green)' }
 
 export default function PrivacyPolicyPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#f6f8fb', color: '#1f2937' }}>
-      <main style={{ maxWidth: 880, margin: '0 auto', padding: '40px 20px 64px' }}>
-        <header style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: '2rem', color: '#124734' }}>Politica de Privacidad</h1>
-          <p style={{ marginTop: 8, color: '#4b5563' }}>Cielito Home - Ultima actualizacion: Abril 2026</p>
-        </header>
+    <div className="auth-body">
+      <div className="auth-page" style={{ paddingBottom: 48 }}>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)', marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>1. Datos que recopilamos</h2>
-          <p>
-            Recopilamos datos basicos para operar el programa de lealtad: nombre, correo electronico,
-            telefono, historial de estancias y movimientos de puntos.
-          </p>
-        </section>
+        <Link to="/login" className="ch-back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </Link>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)', marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>2. Uso de la informacion</h2>
-          <p>
-            Utilizamos la informacion para autenticar usuarios, administrar el programa de recompensas,
-            enviar notificaciones relacionadas al servicio y mejorar la experiencia dentro de la aplicacion.
-          </p>
-        </section>
+        <div className="auth-logo-circle">
+          <CielitoLogo size={64} strokeColor="#2D6A50" strokeWidth="2" />
+        </div>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)', marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>3. Comparticion de datos</h2>
-          <p>
-            No vendemos ni compartimos datos personales con terceros para fines comerciales. Solo compartimos
-            informacion cuando es necesaria para operar servicios autorizados por el usuario o cumplir obligaciones legales.
-          </p>
-        </section>
+        <h2 className="auth-title">Política de Privacidad</h2>
+        <p className="ch-subtitle" style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+          Cielito Home · Última actualización: Abril 2026
+        </p>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)', marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>4. Seguridad</h2>
-          <p>
-            Protegemos la informacion con controles tecnicos y organizativos razonables, incluyendo conexiones seguras
-            y acceso restringido a datos sensibles.
-          </p>
-        </section>
+        <div className="ch-form">
+          <div style={S}>
+            <h3 style={H}>1. Datos que recopilamos</h3>
+            <p style={P}>
+              Recopilamos datos básicos para operar el programa de lealtad: nombre, correo electrónico,
+              teléfono, historial de estancias y movimientos de puntos.
+            </p>
+          </div>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)', marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>5. Derechos del usuario</h2>
-          <p>
-            Puedes solicitar acceso, correccion o eliminacion de tu informacion personal escribiendo a{' '}
-            <a href="mailto:soporte@cielitohome.com">soporte@cielitohome.com</a>.
-          </p>
-          <p>
-            Tambien puedes consultar las instrucciones de eliminacion de datos en{' '}
-            <Link to="/data-deletion">/data-deletion</Link>.
-          </p>
-        </section>
+          <div style={S}>
+            <h3 style={H}>2. Uso de la información</h3>
+            <p style={P}>
+              Utilizamos la información para autenticar usuarios, administrar el programa de recompensas,
+              enviar notificaciones relacionadas al servicio y mejorar la experiencia dentro de la aplicación.
+            </p>
+          </div>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
-          <h2 style={{ marginTop: 0 }}>6. Contacto</h2>
-          <p>
-            Para dudas sobre privacidad o tratamiento de datos, contactanos en{' '}
-            <a href="mailto:soporte@cielitohome.com">soporte@cielitohome.com</a>.
-          </p>
-          <p style={{ marginBottom: 0 }}>
-            Volver a <Link to="/">inicio</Link>.
-          </p>
-        </section>
-      </main>
+          <div style={S}>
+            <h3 style={H}>3. Compartición de datos</h3>
+            <p style={P}>
+              No vendemos ni compartimos datos personales con terceros para fines comerciales. Solo compartimos
+              información cuando es necesaria para operar servicios autorizados por el usuario o cumplir obligaciones legales.
+            </p>
+          </div>
+
+          <div style={S}>
+            <h3 style={H}>4. Seguridad</h3>
+            <p style={P}>
+              Protegemos la información con controles técnicos y organizativos razonables, incluyendo conexiones
+              seguras y acceso restringido a datos sensibles.
+            </p>
+          </div>
+
+          <div style={S}>
+            <h3 style={H}>5. Derechos del usuario</h3>
+            <p style={P}>
+              Puedes solicitar acceso, corrección o eliminación de tu información personal escribiendo a{' '}
+              <a href="mailto:sistemas@cielitohome.com" style={A}>sistemas@cielitohome.com</a>.{' '}
+              Consulta también las instrucciones en{' '}
+              <Link to="/data-deletion" style={{ ...A, fontWeight: 600 }}>Eliminación de mis datos</Link>.
+            </p>
+          </div>
+
+          <div style={S}>
+            <h3 style={H}>6. Contacto</h3>
+            <p style={P}>
+              Para dudas sobre privacidad o tratamiento de datos, contáctanos en{' '}
+              <a href="mailto:sistemas@cielitohome.com" style={A}>sistemas@cielitohome.com</a>.
+            </p>
+          </div>
+        </div>
+
+        <Link to="/login" className="ch-link-center" style={{ marginTop: '1.5rem' }}>
+          Volver al inicio de sesión
+        </Link>
+      </div>
     </div>
   )
 }

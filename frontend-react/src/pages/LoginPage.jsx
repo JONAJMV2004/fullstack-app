@@ -101,7 +101,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <a href="#" className="ch-link-center">Restablecer contraseña</a>
+        <Link to="/recuperar-password" className="ch-link-center">Restablecer contraseña</Link>
 
         <div className="ch-social-divider" />
 
@@ -133,7 +133,7 @@ export default function LoginPage() {
         </div>
 
         <p className="ch-terms">
-          Al registrarte en Cielito Home, aceptas nuestros <a href="#">Términos y Política de privacidad.</a>
+          Al registrarte en Cielito Home, aceptas nuestros <a href="/privacy-policy">Términos y Política de privacidad.</a>
         </p>
       </div>
     </div>

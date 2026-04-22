@@ -18,8 +18,21 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [alert, setAlert] = useState(null)
+  const [step, setStep] = useState(1)
+  const [code, setCode] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
   const { saveSession } = useAuth()
   const navigate = useNavigate()
+
+  function startCooldown() {
+    setResendCooldown(60)
+    const interval = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -63,19 +76,133 @@ export default function RegisterPage() {
         setAlert({ message: data.error || 'Error al crear cuenta.', type: 'error' })
         return
       }
-
-      if (data?.user?.id) {
-        localStorage.setItem(PWA_NEW_USER_KEY, String(data.user.id))
-      }
-
-      saveSession(data.token, data.user)
-      setAlert({ message: 'Cuenta creada exitosamente.', type: 'success' })
-      setTimeout(() => navigate('/home'), 800)
+      setAlert({ message: `Código enviado a ${email.trim()}`, type: 'success' })
+      setStep(2)
+      startCooldown()
     } catch {
       setAlert({ message: 'Error de conexión. Verifica que el servidor esté activo.', type: 'error' })
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleResend = async () => {
+    if (resendCooldown > 0) return
+    setAlert(null)
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          telefono: telefono.trim(),
+          email: email.trim(),
+          password,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAlert({ message: data.error || 'Error al reenviar.', type: 'error' })
+        return
+      }
+      setAlert({ message: 'Nuevo código enviado.', type: 'success' })
+      startCooldown()
+    } catch {
+      setAlert({ message: 'Error de conexión.', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerify = async (e) => {
+    e.preventDefault()
+    setAlert(null)
+    if (!code.trim()) {
+      setAlert({ message: 'Ingresa el código de verificación.', type: 'error' })
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/auth/verify-register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), verificationCode: code.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAlert({ message: data.error || 'Código incorrecto.', type: 'error' })
+        return
+      }
+      if (data?.user?.id) {
+        localStorage.setItem(PWA_NEW_USER_KEY, String(data.user.id))
+      }
+      saveSession(data.token, data.user)
+      setAlert({ message: 'Cuenta creada exitosamente.', type: 'success' })
+      setTimeout(() => navigate('/home'), 800)
+    } catch {
+      setAlert({ message: 'Error de conexión.', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (step === 2) {
+    return (
+      <div className="auth-body">
+        <div className="auth-page">
+          <button type="button" className="ch-back-btn" onClick={() => { setStep(1); setCode(''); setAlert(null) }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+
+          <div className="auth-logo-circle">
+            <CielitoLogo size={60} strokeColor="#2D6A50" strokeWidth="2" />
+            <span className="auth-logo-brand">Cielito Home</span>
+          </div>
+
+          <h2 className="auth-title">Verifica tu Correo</h2>
+          <p className="ch-subtitle" style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            Enviamos un código de 6 dígitos a<br /><strong>{email.trim()}</strong>
+          </p>
+
+          <Alert message={alert?.message} type={alert?.type} />
+
+          <form className="ch-form" onSubmit={handleVerify} noValidate>
+            <div className="ch-input-group">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="000000"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                style={{ letterSpacing: '0.4em', textAlign: 'center', fontSize: '1.4rem', fontWeight: 700 }}
+                required
+              />
+            </div>
+
+            <button type="submit" className="btn-ch-primary" disabled={loading}>
+              {loading ? <span className="ch-spinner" /> : <span className="btn-text">Activar Cuenta</span>}
+            </button>
+          </form>
+
+          <p className="ch-switch" style={{ marginTop: '1rem' }}>
+            ¿No llegó el correo?{' '}
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendCooldown > 0 || loading}
+              style={{ background: 'none', border: 'none', cursor: resendCooldown > 0 ? 'default' : 'pointer', color: resendCooldown > 0 ? '#a0aec0' : '#2D6A50', fontWeight: 600, padding: 0, fontSize: 'inherit' }}
+            >
+              {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : 'Reenviar código'}
+            </button>
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (

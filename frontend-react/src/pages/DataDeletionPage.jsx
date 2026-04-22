@@ -1,52 +1,81 @@
 import { Link } from 'react-router-dom'
+import CielitoLogo from '../components/CielitoLogo'
+
+const S = { width: '100%', background: 'var(--bg)', borderRadius: 'var(--radius-card)', padding: '16px 18px' }
+const H = { margin: '0 0 8px', fontSize: '0.95rem', color: 'var(--green-dark)', fontWeight: 600 }
+const P = { margin: 0, fontSize: '0.85rem', color: '#718096', lineHeight: 1.65 }
+const A = { color: 'var(--green)' }
 
 export default function DataDeletionPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#f6f8fb', color: '#1f2937' }}>
-      <main style={{ maxWidth: 880, margin: '0 auto', padding: '40px 20px 64px' }}>
-        <header style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: '2rem', color: '#124734' }}>Eliminacion de Datos de Usuario</h1>
-          <p style={{ marginTop: 8, color: '#4b5563' }}>Cielito Home - Ultima actualizacion: Abril 2026</p>
-        </header>
+    <div className="auth-body">
+      <div className="auth-page" style={{ paddingBottom: 48 }}>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)', marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>Como solicitar la eliminacion de datos</h2>
-          <p>
-            Puedes solicitar la eliminacion total de tus datos personales de Cielito Home por cualquiera de estos medios:
-          </p>
-          <ol>
-            <li>Desde la app: Ajustes {'>'} Eliminar cuenta.</li>
-            <li>Por correo: enviar solicitud a <a href="mailto:soporte@cielitohome.com">soporte@cielitohome.com</a>.</li>
-            <li>Por WhatsApp: +52 449 755 6167, indicando el correo de tu cuenta.</li>
-          </ol>
-        </section>
+        <Link to="/login" className="ch-back-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </Link>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)', marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>Plazo de atencion</h2>
-          <p>
-            Validamos identidad y procesamos la eliminacion en un plazo maximo de 10 dias habiles.
-            Al finalizar, te enviaremos confirmacion al correo registrado.
-          </p>
-        </section>
+        <div className="auth-logo-circle">
+          <CielitoLogo size={64} strokeColor="#2D6A50" strokeWidth="2" />
+        </div>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)', marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>Alcance de la eliminacion</h2>
-          <p>
-            Eliminamos datos de perfil, historial de puntos y registros vinculados a tu cuenta, salvo informacion
-            que debamos conservar por obligaciones legales, fiscales o de seguridad.
-          </p>
-        </section>
+        <h2 className="auth-title">Eliminación de Datos</h2>
+        <p className="ch-subtitle" style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+          Cielito Home · Última actualización: Abril 2026
+        </p>
 
-        <section style={{ background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
-          <h2 style={{ marginTop: 0 }}>Enlaces relacionados</h2>
-          <p>
-            Politica de privacidad: <Link to="/privacy-policy">/privacy-policy</Link>
-          </p>
-          <p style={{ marginBottom: 0 }}>
-            Volver a <Link to="/">inicio</Link>.
-          </p>
-        </section>
-      </main>
+        <div className="ch-form">
+          <div style={S}>
+            <h3 style={H}>Cómo solicitar la eliminación</h3>
+            <p style={{ ...P, marginBottom: 8 }}>
+              Puedes solicitar la eliminación total de tus datos personales por cualquiera de estos medios:
+            </p>
+            <ol style={{ ...P, paddingLeft: 20, margin: 0 }}>
+              <li style={{ marginBottom: 4 }}>Desde la app: <strong>Ajustes → Eliminar cuenta.</strong></li>
+              <li style={{ marginBottom: 4 }}>
+                Por correo:{' '}
+                <a href="mailto:sistemas@cielitohome.com" style={A}>sistemas@cielitohome.com</a>
+              </li>
+              <li>
+                Por WhatsApp:{' '}
+                <a href="https://wa.me/524497556167" style={A}>+52 449 755 6167</a>,{' '}
+                indicando el correo de tu cuenta.
+              </li>
+            </ol>
+          </div>
+
+          <div style={S}>
+            <h3 style={H}>Plazo de atención</h3>
+            <p style={P}>
+              Validamos identidad y procesamos la eliminación en un plazo máximo de 10 días hábiles.
+              Al finalizar, te enviaremos confirmación al correo registrado.
+            </p>
+          </div>
+
+          <div style={S}>
+            <h3 style={H}>Alcance de la eliminación</h3>
+            <p style={P}>
+              Eliminamos datos de perfil, historial de puntos y registros vinculados a tu cuenta, salvo
+              información que debamos conservar por obligaciones legales, fiscales o de seguridad.
+            </p>
+          </div>
+
+          <div style={S}>
+            <h3 style={H}>Política de privacidad</h3>
+            <p style={P}>
+              Consulta nuestra{' '}
+              <Link to="/privacy-policy" style={{ ...A, fontWeight: 600 }}>Política de Privacidad</Link>{' '}
+              para más información sobre el tratamiento de tus datos.
+            </p>
+          </div>
+        </div>
+
+        <Link to="/login" className="ch-link-center" style={{ marginTop: '1.5rem' }}>
+          Volver al inicio de sesión
+        </Link>
+      </div>
     </div>
   )
 }
