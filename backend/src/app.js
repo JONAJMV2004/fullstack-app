@@ -20,19 +20,27 @@ app.use(helmet());
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 const fallbackOrigins = process.env.NODE_ENV === 'production'
-  ? []
+  ? [
+      'https://applealtad.cielitohome.com',
+      'https://www.applealtad.cielitohome.com',
+    ]
   : [
       'http://localhost:5173',
       'http://127.0.0.1:5173',
     ];
 
-const configuredOrigins = (process.env.FRONTEND_URL || '')
-  .split(',')
+const configuredOrigins = [process.env.FRONTEND_URL, process.env.CORS_ORIGINS]
+  .filter(Boolean)
+  .flatMap((value) => value.split(','))
   .map((origin) => origin.trim())
   .filter(Boolean);
 
 const allowedOriginPatterns = [...new Set([...configuredOrigins, ...fallbackOrigins])]
   .map((originPattern) => originPattern.replace(/\/$/, ''));
+
+if (allowedOriginPatterns.length > 0) {
+  console.log('Allowed CORS origins:', allowedOriginPatterns.join(', '));
+}
 
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -67,6 +75,9 @@ const corsOptions = {
     return callback(null, false);
   },
   credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));

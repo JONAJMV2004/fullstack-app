@@ -137,6 +137,7 @@ SUPABASE_ANON_KEY=tu_clave_anon
 SUPABASE_SERVICE_ROLE_KEY=tu_clave_service_role
 OAUTH_REDIRECT_URL=http://localhost:5000/api/auth/oauth/callback
 FRONTEND_URL=http://localhost:5173
+CORS_ORIGINS=http://localhost:5173
 FACEBOOK_APP_ID=tu_facebook_app_id
 FACEBOOK_APP_SECRET=tu_facebook_app_secret
 ```
@@ -167,6 +168,7 @@ npm run dev
 Variables de entorno recomendadas para Facebook SDK (crear `frontend-react/.env`):
 
 ```env
+VITE_API_BASE_URL=http://localhost:5000
 VITE_FACEBOOK_APP_ID=tu_facebook_app_id
 VITE_FACEBOOK_API_VERSION=v20.0
 ```
