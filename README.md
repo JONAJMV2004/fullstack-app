@@ -173,6 +173,12 @@ VITE_FACEBOOK_APP_ID=tu_facebook_app_id
 VITE_FACEBOOK_API_VERSION=v20.0
 ```
 
+En producción, usa siempre HTTPS en `VITE_API_BASE_URL` para evitar bloqueos de Mixed Content.
+
+```env
+VITE_API_BASE_URL=https://api.cielitohome.com
+```
+
 Frontend disponible en: `http://localhost:5173`
 
 ---

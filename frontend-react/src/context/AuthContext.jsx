@@ -1,10 +1,25 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 
 function normalizeApiBase(value) {
-  const trimmed = (value || '/api').trim().replace(/\/$/, '')
-  if (trimmed === '') return '/api'
-  if (trimmed === '/api' || trimmed.endsWith('/api')) return trimmed
-  return `${trimmed}/api`
+  const fallback = '/api'
+  const trimmed = (value || fallback).trim().replace(/\/$/, '')
+  if (trimmed === '') return fallback
+
+  // Accept ws/wss env values and convert them to http/https API origins.
+  let normalized = trimmed
+    .replace(/^ws:\/\//i, 'http://')
+    .replace(/^wss:\/\//i, 'https://')
+
+  if (normalized !== '/api' && !normalized.endsWith('/api')) {
+    normalized = `${normalized}/api`
+  }
+
+  // Prevent mixed content on secure pages when env accidentally uses http.
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    normalized = normalized.replace(/^http:\/\//i, 'https://')
+  }
+
+  return normalized
 }
 
 const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL)
