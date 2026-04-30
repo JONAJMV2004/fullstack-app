@@ -3360,6 +3360,35 @@ body {
   color: rgba(255,255,255,0.45);
 }
 
+/* ── Privacy (auth): accordion ── */
+.auth-body .accordion-list {
+  background: #0f2a1a;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 5px 5px 14px rgba(0,0,0,0.55), -2px -2px 6px rgba(255,255,255,0.03);
+}
+.auth-body .accordion-item:not(:last-child) {
+  border-bottom-color: rgba(255,255,255,0.06);
+}
+.auth-body .accordion-header:hover {
+  background: rgba(255,255,255,0.03);
+}
+.auth-body .accordion-title {
+  color: rgba(255,255,255,0.78);
+}
+.auth-body .accordion-chevron {
+  color: rgba(255,255,255,0.3);
+}
+.auth-body .accordion-body {
+  color: rgba(255,255,255,0.5);
+}
+.auth-body .accordion-body p,
+.auth-body .accordion-body li {
+  color: rgba(255,255,255,0.5);
+}
+.auth-body .accordion-body strong {
+  color: rgba(255,255,255,0.78);
+}
+
 /* ── Soporte: notification footer ── */
 .app-body .notification-footer {
   background: #0f2a1a;

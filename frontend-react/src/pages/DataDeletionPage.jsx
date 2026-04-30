@@ -1,10 +1,17 @@
 import { Link } from 'react-router-dom'
 import CielitoLogo from '../components/CielitoLogo'
 
-const S = { width: '100%', background: 'var(--bg)', borderRadius: 'var(--radius-card)', padding: '16px 18px' }
-const H = { margin: '0 0 8px', fontSize: '0.95rem', color: 'var(--green-dark)', fontWeight: 600 }
-const P = { margin: 0, fontSize: '0.85rem', color: '#718096', lineHeight: 1.65 }
-const A = { color: 'var(--green)' }
+const S = {
+  width: '100%',
+  background: 'linear-gradient(145deg, #0f2a1a, #162e1e)',
+  border: '1px solid rgba(255,255,255,0.06)',
+  boxShadow: '5px 5px 14px rgba(0,0,0,0.55), -2px -2px 6px rgba(255,255,255,0.03)',
+  borderRadius: 'var(--radius-card)',
+  padding: '16px 18px',
+}
+const H = { margin: '0 0 8px', fontSize: '0.95rem', color: 'rgba(255,255,255,0.82)', fontWeight: 600 }
+const P = { margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.48)', lineHeight: 1.65 }
+const A = { color: '#C9A84C' }
 
 export default function DataDeletionPage() {
   return (
@@ -18,7 +25,7 @@ export default function DataDeletionPage() {
         </Link>
 
         <div className="auth-logo-circle">
-          <CielitoLogo size={64} strokeColor="#2D6A50" strokeWidth="2" />
+          <CielitoLogo size={64} strokeColor="#C9A84C" strokeWidth="2" />
         </div>
 
         <h2 className="auth-title">Eliminación de Datos</h2>
